@@ -13,6 +13,11 @@ interface WriteViewProps {
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
 }
 
+interface ChapterInput {
+  title: string;
+  content: string;
+}
+
 const TAG_SUGGESTIONS = ['sci-fi', 'archive', 'web3', 'philosophy', 'culture', 'poetry', 'history', 'music', 'ocean', 'survival', 'filecoin', 'ipfs'];
 
 const COVER_GRADIENTS = [
@@ -35,7 +40,6 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
   const { isConnected, address } = useAccount();
 
   const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [selectedGradient, setSelectedGradient] = useState(COVER_GRADIENTS[0]);
@@ -43,10 +47,26 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
   const [isUploading, setIsUploading] = useState(false);
   const [step, setStep] = useState<'write' | 'preview'>('write');
 
+  // Book/Novel Mode State
+  const [isMultiChapter, setIsMultiChapter] = useState(false);
+  const [chapters, setChapters] = useState<ChapterInput[]>([]);
+  const [chapTitle, setChapTitle] = useState('');
+  const [chapContent, setChapContent] = useState('');
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  // Single Page Mode State
+  const [singleContent, setSingleContent] = useState('');
+
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
-  const readMinutes = Math.max(1, Math.ceil(wordCount / 200));
+  // Calculate total word counts
+  const getWordCount = (txt: string) => txt.trim().split(/\s+/).filter(Boolean).length;
+  
+  const totalWordCount = isMultiChapter
+    ? chapters.reduce((acc, c) => acc + getWordCount(c.content), 0) + getWordCount(chapContent)
+    : getWordCount(singleContent);
+
+  const readMinutes = Math.max(1, Math.ceil(totalWordCount / 200));
 
   function addTag(tag: string) {
     const t = tag.trim().toLowerCase();
@@ -64,13 +84,78 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
     reader.readAsDataURL(file);
   }
 
+  // Chapter Management functions
+  const saveChapter = () => {
+    if (!chapContent.trim()) {
+      showToast('Chapter content cannot be empty.', 'error');
+      return;
+    }
+    const finalTitle = chapTitle.trim() || `Chapter ${chapters.length + 1}`;
+
+    if (editingIndex !== null) {
+      // Update existing
+      const updated = [...chapters];
+      updated[editingIndex] = { title: finalTitle, content: chapContent.trim() };
+      setChapters(updated);
+      setEditingIndex(null);
+      showToast('Chapter updated.', 'success');
+    } else {
+      // Add new
+      setChapters([...chapters, { title: finalTitle, content: chapContent.trim() }]);
+      showToast(`Chapter ${chapters.length + 1} added.`, 'success');
+    }
+
+    setChapTitle('');
+    setChapContent('');
+  };
+
+  const editChapter = (index: number) => {
+    setEditingIndex(index);
+    setChapTitle(chapters[index].title);
+    setChapContent(chapters[index].content);
+  };
+
+  const deleteChapter = (index: number) => {
+    setChapters(chapters.filter((_, i) => i !== index));
+    if (editingIndex === index) {
+      setEditingIndex(null);
+      setChapTitle('');
+      setChapContent('');
+    }
+    showToast('Chapter deleted.', 'info');
+  };
+
   async function handlePublish() {
     if (!isConnected) { showToast('Connect your wallet first!', 'error'); return; }
-    if (!title.trim()) { showToast('Please add a title', 'error'); return; }
-    if (content.trim().split(/\s+/).length < 30) { showToast('Story must be at least 30 words', 'error'); return; }
+    if (!title.trim()) { showToast('Please add a book title', 'error'); return; }
+
+    let finalChapters: ChapterInput[] = [];
+    let finalContent = '';
+
+    if (isMultiChapter) {
+      if (chapters.length === 0 && !chapContent.trim()) {
+        showToast('Please add at least one chapter.', 'error');
+        return;
+      }
+      // If there's unsaved text in the current fields, auto-save or warn
+      let currentChapters = [...chapters];
+      if (chapContent.trim()) {
+        const finalTitle = chapTitle.trim() || `Chapter ${chapters.length + 1}`;
+        currentChapters.push({ title: finalTitle, content: chapContent.trim() });
+      }
+      finalChapters = currentChapters;
+      finalContent = finalChapters.map(c => `## ${c.title}\n\n${c.content}`).join('\n\n');
+    } else {
+      if (getWordCount(singleContent) < 30) {
+        showToast('Story must be at least 30 words', 'error');
+        return;
+      }
+      finalChapters = [{ title: 'Chapter 1', content: singleContent.trim() }];
+      finalContent = singleContent.trim();
+    }
 
     setIsUploading(true);
-    showToast('📡 Pinning to IPFS & opening Filecoin deal…', 'info');
+    showToast('📡 Pinning dataset to IPFS & opening Filecoin deal…', 'info');
 
     // Simulate upload
     await new Promise(r => setTimeout(r, 2500));
@@ -80,7 +165,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
     const newStory: Story = {
       id: `story-${Date.now()}`,
       title: title.trim(),
-      content: content.trim(),
+      content: finalContent,
       coverImage: coverPreview ?? selectedGradient,
       author: shortenAddr(address),
       authorFull: address ?? '0x0000',
@@ -94,23 +179,24 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
       tipsReceived: 0,
       tipsUSDFC: 0,
       filecoinCID: fakeCID,
-      tags: tags.length > 0 ? tags : ['story'],
+      tags: tags.length > 0 ? tags : ['book'],
       publishedAt: new Date().toISOString().slice(0, 10),
-      wordCount,
+      wordCount: totalWordCount,
       readMinutes,
+      chapters: finalChapters,
     };
 
     setIsUploading(false);
     onPublish(newStory);
-    showToast('🎉 Story published! Storage deal opened for 7 days.', 'success');
+    showToast('🎉 Book published! Filecoin storage deal successfully created.', 'success');
     onNavigate('story', newStory.id);
   }
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold font-serif text-[var(--text-primary)] mb-2">✍️ Publish a Story</h1>
-        <p className="text-[var(--text-secondary)] text-sm">Your story will be pinned to IPFS and registered as a Filecoin dataset. Community tips extend its storage lease.</p>
+        <h1 className="text-3xl font-bold font-serif text-[var(--text-primary)] mb-2">✍️ Publish a Story or Book</h1>
+        <p className="text-[var(--text-secondary)] text-sm">Your work will be pinned to IPFS and registered as a Filecoin dataset. Tips extend its storage lease dynamically.</p>
       </div>
 
       {!isConnected && (
@@ -121,6 +207,30 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
           </div>
         </div>
       )}
+
+      {/* Mode Switcher */}
+      <div className="rounded-2xl p-4 mb-6 border border-[var(--border-strong)] bg-[var(--bg-secondary)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        <div>
+          <p className="text-sm font-bold text-[var(--text-primary)]">Select Format Type</p>
+          <p className="text-xs text-[var(--text-secondary)]">Choose whether you are publishing a short story or a multi-page book/novel.</p>
+        </div>
+        <div className="flex gap-2 bg-[var(--bg-card)] p-1 rounded-xl border border-[var(--border-strong)] w-full sm:w-auto">
+          <button
+            type="button"
+            onClick={() => setIsMultiChapter(false)}
+            className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition-all ${!isMultiChapter ? 'bg-[var(--accent-forest)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            📄 Short Story (Single Page)
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsMultiChapter(true)}
+            className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition-all ${isMultiChapter ? 'bg-[var(--accent-forest)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
+          >
+            📚 Book / Novel (Multi-Chapter)
+          </button>
+        </div>
+      </div>
 
       {/* Step tabs */}
       <div className="flex gap-2 mb-8">
@@ -141,7 +251,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
 
       {step === 'write' ? (
         <div className="space-y-6">
-          {/* Cover image */}
+          {/* Cover design */}
           <div>
             <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Cover Design</label>
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3">
@@ -177,12 +287,14 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
             </div>
           </div>
 
-          {/* Title */}
+          {/* Book Title */}
           <div>
-            <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Story Title *</label>
+            <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">
+              {isMultiChapter ? 'Book / Novel Title *' : 'Story Title *'}
+            </label>
             <input
               type="text"
-              placeholder="Give your story a compelling title…"
+              placeholder={isMultiChapter ? "Enter book or novel title…" : "Give your story a compelling title…"}
               value={title}
               onChange={e => setTitle(e.target.value)}
               maxLength={120}
@@ -191,22 +303,108 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
             <p className="text-[10px] text-[var(--text-muted)] mt-1 text-right font-medium">{title.length}/120</p>
           </div>
 
-          {/* Content */}
-          <div>
-            <div className="flex justify-between mb-2">
-              <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Story Content *</label>
-              <span className="text-xs text-[var(--text-muted)] font-medium">{wordCount} words · ~{readMinutes} min read</span>
+          {/* CONTENT SECTION */}
+          {isMultiChapter ? (
+            /* Multi-chapter writing flow */
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Chapter Manager</label>
+                <span className="text-xs text-[var(--text-muted)] font-semibold">{chapters.length} chapters · {totalWordCount} total words</span>
+              </div>
+
+              {/* Saved chapters list */}
+              {chapters.length > 0 && (
+                <div className="border border-[var(--border-strong)] rounded-xl bg-[var(--bg-secondary)] p-4 space-y-2.5">
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Saved Chapters</p>
+                  <div className="space-y-2">
+                    {chapters.map((ch, i) => (
+                      <div key={i} className="flex justify-between items-center bg-[var(--bg-card)] border border-[var(--border-strong)] p-3 rounded-lg text-sm shadow-sm">
+                        <div className="truncate pr-4">
+                          <span className="font-bold text-[var(--accent-forest)] mr-1.5">{i + 1}.</span>
+                          <span className="font-serif font-bold text-[var(--text-primary)]">{ch.title}</span>
+                          <span className="text-[10px] text-[var(--text-muted)] ml-2 font-medium">({getWordCount(ch.content)} words)</span>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => editChapter(i)}
+                            className="text-xs font-semibold text-[var(--accent-forest)] hover:underline"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteChapter(i)}
+                            className="text-xs font-semibold text-[var(--accent-clay)] hover:underline"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Add/Edit chapter form */}
+              <div className="border border-[var(--border-subtle)] rounded-xl p-4 bg-[var(--bg-card)] space-y-3 shadow-sm">
+                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+                  {editingIndex !== null ? `✏️ Edit Chapter ${editingIndex + 1}` : `➕ Add Chapter / Page ${chapters.length + 1}`}
+                </p>
+                <input
+                  type="text"
+                  placeholder="Chapter Title (e.g., Chapter 1: The Beginning)"
+                  value={chapTitle}
+                  onChange={e => setChapTitle(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] bg-[var(--bg-primary)] font-serif"
+                />
+                <textarea
+                  placeholder="Write chapter content here. You can add as many chapters as you want. Perfect for 99-page books or 400-page novels. Filecoin will store the entire compiled manuscript securely…"
+                  rows={10}
+                  value={chapContent}
+                  onChange={e => setChapContent(e.target.value)}
+                  className="w-full px-3 py-2 text-sm rounded-lg border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] bg-[var(--bg-primary)] resize-none serif-body"
+                />
+                <div className="flex gap-2 justify-end">
+                  {editingIndex !== null && (
+                    <button
+                      type="button"
+                      onClick={() => { setEditingIndex(null); setChapTitle(''); setChapContent(''); }}
+                      className="px-4 py-2 rounded-lg text-xs font-semibold border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-black/5 transition-all"
+                    >
+                      Cancel Edit
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={saveChapter}
+                    className="px-4 py-2 rounded-lg text-xs font-bold text-white btn-primary transition-all"
+                  >
+                    {editingIndex !== null ? 'Update Chapter' : 'Save Chapter'}
+                  </button>
+                </div>
+              </div>
             </div>
-            <textarea
-              placeholder="Write your story here. There's no page limit — the longer the story, the more Filecoin data is stored, adding real value to the network…"
-              rows={16}
-              value={content}
-              onChange={e => setContent(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl text-sm border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-card)] resize-none serif-body"
-            />
-            <div className="rounded-xl px-4 py-2 mt-2 border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] bg-[var(--bg-secondary)] leading-relaxed">
-              💡 <strong>Value Highlight:</strong> Longer stories store more metadata and text payload. Since this acts as a real Filecoin dataset, your literary work contributes to the total storage volume of the network.
+          ) : (
+            /* Single chapter flow */
+            <div>
+              <div className="flex justify-between mb-2">
+                <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Story Content *</label>
+                <span className="text-xs text-[var(--text-muted)] font-medium">{totalWordCount} words · ~{readMinutes} min read</span>
+              </div>
+              <textarea
+                placeholder="Write your story here. There's no page limit — the longer the story, the more Filecoin data is stored, adding real value to the network…"
+                rows={16}
+                value={singleContent}
+                onChange={e => setSingleContent(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-sm border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-card)] resize-none serif-body"
+              />
             </div>
+          )}
+
+          {/* Value Highlight info box */}
+          <div className="rounded-xl px-4 py-3 mt-4 border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] bg-[var(--bg-secondary)] leading-relaxed">
+            💡 <strong>Filecoin Dataset Capacity:</strong> Whether you write a short 1-page article or compile a 400-page historical novel with 99 chapters, the system packages your content into a secure, encrypted folder structure. Decentalized Filecoin providers store the entire metadata set. Larger works add real, meaningful transaction size to the Filecoin ecosystem.
           </div>
 
           {/* Tags */}
@@ -251,7 +449,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
             </button>
             <button
               onClick={handlePublish}
-              disabled={!isConnected || isUploading || !title.trim() || wordCount < 30}
+              disabled={!isConnected || isUploading || !title.trim() || totalWordCount < 30}
               className="flex-2 px-8 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed btn-primary"
               style={{ flex: 2 }}
             >
@@ -263,7 +461,9 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
                   </svg>
                   Uploading to Filecoin…
                 </span>
-              ) : '🚀 Publish to Filecoin'}
+              ) : (
+                isMultiChapter ? '🚀 Publish Book to Filecoin' : '🚀 Publish Story to Filecoin'
+              )}
             </button>
           </div>
         </div>
@@ -282,20 +482,41 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
                   <span key={t} className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-sm">#{t}</span>
                 ))}
               </div>
-              <h1 className="text-2xl font-bold font-serif text-white drop-shadow">{title || 'Untitled Story'}</h1>
-              <p className="text-xs text-white/80 mt-1">by {shortenAddr(address)} · {wordCount} words · {readMinutes} min read</p>
+              <h1 className="text-2xl font-bold font-serif text-white drop-shadow">{title || 'Untitled Book'}</h1>
+              <p className="text-xs text-white/80 mt-1">
+                by {shortenAddr(address)} · {isMultiChapter ? `${chapters.length} chapters` : '1 page'} · {totalWordCount} words · {readMinutes} min read
+              </p>
             </div>
           </div>
+
           <div className="glass rounded-2xl p-6 border border-[var(--border-subtle)] bg-[var(--bg-card)]">
-            <p className="serif-body text-[var(--text-primary)] whitespace-pre-line text-sm">{content || 'Nothing written yet…'}</p>
+            {isMultiChapter ? (
+              <div className="space-y-6">
+                {chapters.map((ch, idx) => (
+                  <div key={idx} className="border-b border-black/5 last:border-0 pb-6 last:pb-0">
+                    <h3 className="text-lg font-bold font-serif text-[var(--text-primary)] mb-3">{idx + 1}. {ch.title}</h3>
+                    <p className="serif-body text-[var(--text-secondary)] whitespace-pre-line text-sm">{ch.content}</p>
+                  </div>
+                ))}
+                {chapters.length === 0 && chapContent.trim() && (
+                  <div>
+                    <h3 className="text-lg font-bold font-serif text-[var(--text-primary)] mb-3">{chapTitle || 'Chapter 1'}</h3>
+                    <p className="serif-body text-[var(--text-secondary)] whitespace-pre-line text-sm">{chapContent}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="serif-body text-[var(--text-primary)] whitespace-pre-line text-sm">{singleContent || 'Nothing written yet…'}</p>
+            )}
           </div>
+
           <div className="flex gap-3 mt-6">
             <button onClick={() => setStep('write')} className="flex-1 py-3 rounded-xl font-semibold text-sm border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 bg-[var(--bg-card)] transition-all">
               ← Back to Edit
             </button>
             <button
               onClick={handlePublish}
-              disabled={!isConnected || isUploading || !title.trim() || wordCount < 30}
+              disabled={!isConnected || isUploading || !title.trim() || totalWordCount < 30}
               className="flex-2 px-8 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed btn-primary"
               style={{ flex: 2 }}
             >
