@@ -162,13 +162,21 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
         />
 
         {finalAmount > 0 && (
-          <div className="flex flex-col gap-1 text-xs text-[var(--text-secondary)] mb-4 px-1">
-            <div className="flex justify-between mb-1.5">
+          <div className="flex flex-col gap-1.5 text-xs text-[var(--text-secondary)] mb-4 px-1">
+            <div className="flex justify-between font-bold border-b border-[var(--border-strong)] pb-1.5 mb-1">
               <span>Tip Amount</span>
-              <span className="text-[var(--accent-forest)] font-bold">${finalAmount.toFixed(2)} USDFC ({ (finalAmount * 1.0).toFixed(1) } FIL)</span>
+              <span className="text-[var(--text-primary)]">${finalAmount.toFixed(2)} USDFC ({ (finalAmount * 1.0).toFixed(1) } FIL)</span>
             </div>
-            <p className="text-[10px] text-[var(--text-muted)] leading-relaxed font-medium">
-              💡 100% of this tip goes to the author&apos;s withdrawable balance. The author can use their balance to extend their stories&apos; storage leases on Filecoin or withdraw it.
+            <div className="flex justify-between text-[11px] font-medium text-[var(--accent-forest)]">
+              <span>Author Receives (90%)</span>
+              <span>${(finalAmount * 0.90).toFixed(2)} USDFC</span>
+            </div>
+            <div className="flex justify-between text-[11px] font-medium text-[var(--accent-ochre)]">
+              <span>Platform Fee (10%)</span>
+              <span>${(finalAmount * 0.10).toFixed(2)} USDFC</span>
+            </div>
+            <p className="text-[10px] text-[var(--text-muted)] leading-relaxed font-medium mt-1">
+              💡 90% of the tip goes directly to the author&apos;s withdrawable balance to support their work and cover storage costs. The 10% platform fee supports IPFS pinning gateways and site hosting.
             </p>
           </div>
         )}

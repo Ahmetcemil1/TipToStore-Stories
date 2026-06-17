@@ -341,6 +341,8 @@ export default function App() {
 
   // Author Earnings Balances
   const [balances, setBalances] = useState<Record<string, number>>({});
+  // Platform Owner Revenue (10% fees)
+  const [platformBalance, setPlatformBalance] = useState<number>(0);
 
   // Load session and balances from localStorage
   useEffect(() => {
@@ -373,6 +375,22 @@ export default function App() {
       const t = setTimeout(() => {
         setBalances(INITIAL_BALANCES);
         localStorage.setItem('tiptostore_balances', JSON.stringify(INITIAL_BALANCES));
+      }, 0);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  useEffect(() => {
+    const storedPlatform = localStorage.getItem('tiptostore_platform_balance');
+    if (storedPlatform) {
+      const t = setTimeout(() => {
+        setPlatformBalance(parseFloat(storedPlatform));
+      }, 0);
+      return () => clearTimeout(t);
+    } else {
+      const t = setTimeout(() => {
+        setPlatformBalance(12.50);
+        localStorage.setItem('tiptostore_platform_balance', '12.50');
       }, 0);
       return () => clearTimeout(t);
     }
@@ -442,6 +460,9 @@ export default function App() {
   }
 
   function handleTip(storyId: string, amount: number, txHash?: string) {
+    const platformFee = +(amount * 0.10).toFixed(2);
+    const authorAmount = +(amount - platformFee).toFixed(2);
+
     setStories(prev =>
       prev.map(s => {
         if (s.id !== storyId) return s;
@@ -459,10 +480,16 @@ export default function App() {
       setBalances(prev => {
         const nextBalances = {
           ...prev,
-          [authorAddr]: +((prev[authorAddr] || 0) + amount).toFixed(2)
+          [authorAddr]: +((prev[authorAddr] || 0) + authorAmount).toFixed(2)
         };
         localStorage.setItem('tiptostore_balances', JSON.stringify(nextBalances));
         return nextBalances;
+      });
+
+      setPlatformBalance(prev => {
+        const nextPlatform = +(prev + platformFee).toFixed(2);
+        localStorage.setItem('tiptostore_platform_balance', nextPlatform.toString());
+        return nextPlatform;
       });
     }
 
@@ -476,7 +503,7 @@ export default function App() {
       authorAddress: story?.authorFull ?? '',
     };
     setTipHistory(prev => [rec, ...prev]);
-    showToast(`✅ Sent $${amount.toFixed(2)} USDFC directly to the author's balance!`, 'success');
+    showToast(`✅ Tip processed! $${authorAmount.toFixed(2)} USDFC to author, $${platformFee.toFixed(2)} USDFC platform fee collected.`, 'success');
   }
 
   function handleWithdraw(authorAddress: string, amount: number) {
@@ -497,6 +524,22 @@ export default function App() {
     });
 
     showToast(`Successfully withdrew $${amount.toFixed(2)} USDFC to wallet!`, 'success');
+    return true;
+  }
+
+  function handleWithdrawPlatform(amount: number) {
+    if (platformBalance < amount) {
+      showToast('Insufficient platform balance to withdraw.', 'error');
+      return false;
+    }
+
+    setPlatformBalance(prev => {
+      const nextPlatform = +(prev - amount).toFixed(2);
+      localStorage.setItem('tiptostore_platform_balance', nextPlatform.toString());
+      return nextPlatform;
+    });
+
+    showToast(`Successfully withdrew $${amount.toFixed(2)} USDFC platform fees to admin wallet!`, 'success');
     return true;
   }
 
@@ -643,6 +686,8 @@ export default function App() {
             onAllocateStorage={handleAllocateStorage}
             onNavigate={navigate}
             onTipClick={setTipStory}
+            platformBalance={platformBalance}
+            onWithdrawPlatform={handleWithdrawPlatform}
           />
         )}
       </main>

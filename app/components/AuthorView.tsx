@@ -16,6 +16,8 @@ interface AuthorViewProps {
   onAllocateStorage: (storyId: string, days: number, cost: number) => boolean;
   onNavigate: (page: Page, id?: string) => void;
   onTipClick: (story: Story) => void;
+  platformBalance: number;
+  onWithdrawPlatform: (amount: number) => boolean;
 }
 
 function shortenAddr(addr: string) {
@@ -37,11 +39,15 @@ export function AuthorView({
   onAllocateStorage,
   onNavigate,
   onTipClick,
+  platformBalance,
+  onWithdrawPlatform,
 }: AuthorViewProps) {
   const [profile, setProfile] = useState<{ username: string; email: string; avatar: string; bio: string; walletAddress: string } | null>(null);
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [selectedStoryId, setSelectedStoryId] = useState('');
-  const [selectedPkg, setSelectedPkg] = useState({ days: 30, cost: 3.0 });
+  const [selectedPkg, setSelectedPkg] = useState({ days: 30, cost: 0.05 });
+  const [demoAdminMode, setDemoAdminMode] = useState(false);
+  const ADMIN_WALLET = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
 
   // Wagmi Hooks for real wallet data
   const { isConnected, address: connectedAddress } = useAccount();
@@ -248,23 +254,35 @@ export function AuthorView({
       {/* Manage Earnings & Storage Panel */}
       {isOwnProfile && (
         <div className="rounded-2xl p-6 mb-8 border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm">
-          <h3 className="text-base font-bold font-serif text-[var(--text-primary)] mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-[var(--accent-forest)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16v1M10 12h4" />
-            </svg>
-            Manage Earnings & Filecoin Storage Leases
-          </h3>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-5 pb-3 border-b border-[var(--border-strong)]">
+            <h3 className="text-base font-bold font-serif text-[var(--text-primary)] flex items-center gap-2">
+              <svg className="w-5 h-5 text-[var(--accent-forest)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16v1M10 12h4" />
+              </svg>
+              Manage Earnings & Filecoin Storage Leases
+            </h3>
+            <button
+              onClick={() => setDemoAdminMode(!demoAdminMode)}
+              className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
+                demoAdminMode
+                  ? 'bg-[var(--accent-ochre)]/10 border-[var(--accent-ochre)]/30 text-[var(--accent-ochre)]'
+                  : 'border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-secondary)]'
+              }`}
+            >
+              ⚙️ {demoAdminMode ? 'Exit Admin View' : 'Simulate Platform Owner'}
+            </button>
+          </div>
 
           <div className="grid md:grid-cols-2 gap-6">
             {/* Left: Earnings Withdrawal */}
             <div className="rounded-xl p-4 border border-[var(--border-strong)] bg-[var(--bg-secondary)] flex flex-col justify-between">
               <div>
-                <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Withdrawable Balance</h4>
+                <h4 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Withdrawable Balance (90% of Tips)</h4>
                 <p className="text-3xl font-extrabold text-[var(--accent-forest)] mb-2">
                   ${(balances[address.toLowerCase()] || 0).toFixed(2)} <span className="text-xs font-semibold text-[var(--text-muted)]">USDFC</span>
                 </p>
                 <p className="text-xs text-[var(--text-secondary)] leading-relaxed mb-4 font-medium">
-                  These funds represent tips sent directly to you by your readers. You can withdraw them to your wallet or use them to extend your stories&apos; storage leases.
+                  These funds represent your earned tips (excluding 10% platform fee). You can withdraw them to your connected Web3 wallet or use them to extend storage leases.
                 </p>
               </div>
 
@@ -313,10 +331,10 @@ export function AuthorView({
                     <label className="block text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1">Storage Extension Package</label>
                     <div className="grid grid-cols-2 gap-2">
                       {[
-                        { days: 30, cost: 3.0, label: '30 Days / $3.00' },
-                        { days: 90, cost: 9.0, label: '90 Days / $9.00' },
-                        { days: 180, cost: 18.0, label: '180 Days / $18.00' },
-                        { days: 365, cost: 36.0, label: '365 Days / $36.00' },
+                        { days: 30, cost: 0.05, label: '30 Days / $0.05' },
+                        { days: 90, cost: 0.10, label: '90 Days / $0.10' },
+                        { days: 180, cost: 0.20, label: '180 Days / $0.20' },
+                        { days: 365, cost: 0.50, label: '365 Days / $0.50' },
                       ].map(pkg => (
                         <button
                           key={pkg.days}
@@ -348,12 +366,49 @@ export function AuthorView({
                       ? 'Select a story'
                       : (balances[address.toLowerCase()] || 0) < selectedPkg.cost
                       ? `Insufficient balance (Needs $${selectedPkg.cost.toFixed(2)})`
-                      : `Allocate $${selectedPkg.cost.toFixed(2)} to Extend Storage`}
+                      : `Allocate $${selectedPkg.cost.toFixed(3)} to Extend Storage`}
                   </button>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Admin Dashboard (Visible only to Admin or when Demo Admin Mode is active) */}
+          {(connectedAddress?.toLowerCase() === ADMIN_WALLET.toLowerCase() || demoAdminMode) && (
+            <div className="mt-6 pt-6 border-t border-[var(--border-strong)]">
+              <h4 className="text-xs font-bold text-[var(--accent-ochre)] uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Platform Owner Administration Panel
+              </h4>
+              <div className="rounded-xl p-4 border border-[var(--accent-ochre)]/30 bg-[var(--bg-secondary)] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in-up">
+                <div className="flex-1">
+                  <p className="text-xs text-[var(--text-secondary)] font-medium mb-1">
+                    Platform Fee Collected (10% Protocol Cut on Reader Tips)
+                  </p>
+                  <p className="text-2xl font-extrabold text-[var(--accent-ochre)] mb-1">
+                    ${platformBalance.toFixed(2)} <span className="text-xs font-semibold text-[var(--text-muted)]">USDFC</span>
+                  </p>
+                  <p className="text-[10px] text-[var(--text-secondary)] leading-relaxed">
+                    This balance accumulates 10% of all reader tips to cover decentralized gateway, pinning (IPFS), and server hosting costs.
+                  </p>
+                </div>
+                <div className="shrink-0 w-full md:w-auto">
+                  <button
+                    disabled={platformBalance <= 0}
+                    onClick={() => onWithdrawPlatform(platformBalance)}
+                    className="w-full md:w-auto px-5 py-2.5 rounded-xl font-bold text-xs text-white bg-[var(--accent-ochre)] hover:bg-[var(--accent-ochre)]/90 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Withdraw Protocol Fees
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

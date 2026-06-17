@@ -243,7 +243,7 @@ export function StoryDetailView({ story, onBack, onTipClick, onLike, onNavigate 
                 <span className="w-6 h-6 rounded-full bg-[var(--accent-forest)]/10 text-[var(--accent-forest)] text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">2</span>
                 <div>
                   <p className="text-xs font-bold text-[var(--text-primary)] mb-0.5">Author allocates balance to storage</p>
-                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">The author visits their profile, selects this story, and uses their earnings to open a new Filecoin storage lease. Minimum: 30 days for $3.00 USDFC.</p>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">The author visits their profile, selects this story, and uses their earnings to open a new Filecoin storage lease. Minimum: 30 days for $0.05 USDFC.</p>
                 </div>
               </div>
             </div>
