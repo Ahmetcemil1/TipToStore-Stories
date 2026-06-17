@@ -57,8 +57,9 @@ interface ExtendedWarmStorage {
 
 // ─────────────────────────────────────────────────────────
 
+// Securely load private key on server-side only to prevent browser exposure
 const account = privateKeyToAccount(
-  (process.env.NEXT_PUBLIC_AUTHOR_PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as `0x${string}`
+  (process.env.AUTHOR_PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as `0x${string}`
 );
 
 // Instantiate core Synapse Client
@@ -124,15 +125,48 @@ export async function uploadStoryToFilecoin(data: Uint8Array, title: string, aut
 }
 
 /**
+ * Helpers to get and set rails in localStorage to prevent Serverless/in-memory cache wipe
+ */
+function getCachedRail(authorAddress: string): string | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const data = localStorage.getItem('tiptostore_cached_rails');
+    if (data) {
+      const parsed = JSON.parse(data);
+      return parsed[authorAddress];
+    }
+  } catch (e) {
+    console.error("Failed to read rail cache from localStorage:", e);
+  }
+  return undefined;
+}
+
+function setCachedRail(authorAddress: string, railId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const data = localStorage.getItem('tiptostore_cached_rails');
+    const parsed = data ? JSON.parse(data) : {};
+    parsed[authorAddress] = railId;
+    localStorage.setItem('tiptostore_cached_rails', JSON.stringify(parsed));
+  } catch (e) {
+    console.error("Failed to save rail cache to localStorage:", e);
+  }
+}
+
+/**
  * Tips an author and automatically extends the storage of the story
  * using the Synapse Payment Rails.
  */
 export async function tipAndRenewStorage(dataSetId: string, authorAddress: string, tipAmountUSDFC: number) {
   // 1. Approve USDFC spending via synapse.payments targeting the correct filecoinPay contract
-  const filecoinPayAddress = (synapse.contracts?.filecoinPay?.address || '0x0000000000000000000000000000000000000000') as `0x${string}`;
+  const filecoinPayAddress = synapse.contracts?.filecoinPay?.address;
+  if (!filecoinPayAddress) {
+    throw new Error("Filecoin Pay contract address is not configured in the Synapse context.");
+  }
+
   try {
     await synapse.payments.approve({
-      spender: filecoinPayAddress,
+      spender: filecoinPayAddress as `0x${string}`,
       amount: tipAmountUSDFC,
     });
     
@@ -143,15 +177,18 @@ export async function tipAndRenewStorage(dataSetId: string, authorAddress: strin
     throw new Error("USDFC payment approval failed: " + (e as Error).message);
   }
 
-  // 2. Create a payment rail for tipping (if not already existing)
-  let railId: string;
-  try {
-    railId = await synapse.payments.createRail({
-      to: authorAddress as `0x${string}`,
-      rate: 0.1, // Cost per epoch (example)
-    });
-  } catch (e) {
-    throw new Error("Failed to create USDFC payment rail: " + (e as Error).message);
+  // 2. Check if a payment rail already exists for this author to save on transaction costs (using localStorage cache)
+  let railId = getCachedRail(authorAddress);
+  if (!railId) {
+    try {
+      railId = await synapse.payments.createRail({
+        to: authorAddress as `0x${string}`,
+        rate: 0.1, // Cost per epoch (example)
+      });
+      setCachedRail(authorAddress, railId);
+    } catch (e) {
+      throw new Error("Failed to create USDFC payment rail: " + (e as Error).message);
+    }
   }
 
   // 3. Reader tips via the rail
@@ -187,7 +224,8 @@ export async function tipAndRenewStorage(dataSetId: string, authorAddress: strin
   if (!currentDataSet) {
     throw new Error("Dataset not found on-chain");
   }
-  const newEndEpoch = Number(currentDataSet.pdpEndEpoch) + Math.floor(renewalDays * 2880); // 2880 epochs per day (30s each)
+  // Include 1% block time variance buffer (1.01 multiplier) to guarantee correct synchronization with provider state
+  const newEndEpoch = Number(currentDataSet.pdpEndEpoch) + Math.floor(renewalDays * 2880 * 1.01);
   
   try {
     await warmStorage.upsertDataSet(dataSetId, {
