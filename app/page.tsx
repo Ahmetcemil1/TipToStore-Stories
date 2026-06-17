@@ -15,6 +15,8 @@ import { WriteView }       from './components/WriteView';
 import { StoryDetailView } from './components/StoryDetailView';
 import { AuthorView }      from './components/AuthorView';
 import { AuthModal }       from './components/AuthModal';
+import { LandingView }     from './components/LandingView';
+import { LibraryView }     from './components/LibraryView';
 
 // Data & Types
 import { SEED_STORIES, TIP_HISTORY_SEED } from './lib/data';
@@ -23,7 +25,7 @@ import { Story, TipRecord, FilterType, SortType } from './types';
 // ─────────────────────────────────────
 //  Page / routing state
 // ─────────────────────────────────────
-type Page = 'home' | 'about' | 'write' | 'story' | 'author';
+type Page = 'home' | 'about' | 'write' | 'story' | 'author' | 'library';
 
 interface NavState {
   page: Page;
@@ -396,6 +398,39 @@ export default function App() {
     }
   }, []);
 
+  // Load and merge stories from localStorage
+  useEffect(() => {
+    const storedStories = localStorage.getItem('tiptostore_stories');
+    if (storedStories) {
+      try {
+        const parsed = JSON.parse(storedStories) as Story[];
+        let updated = false;
+        const nextList = [...parsed];
+        for (const seed of SEED_STORIES) {
+          if (!nextList.some(s => s.id === seed.id)) {
+            nextList.push(seed);
+            updated = true;
+          }
+        }
+        setStories(nextList);
+        if (updated) {
+          localStorage.setItem('tiptostore_stories', JSON.stringify(nextList));
+        }
+      } catch (e) {
+        console.error('Failed to parse stories from localStorage', e);
+      }
+    } else {
+      localStorage.setItem('tiptostore_stories', JSON.stringify(SEED_STORIES));
+    }
+  }, []);
+
+  // Save stories to localStorage when updated
+  useEffect(() => {
+    if (stories && stories.length > 0) {
+      localStorage.setItem('tiptostore_stories', JSON.stringify(stories));
+    }
+  }, [stories]);
+
   function showToast(msg: string, type: 'success'|'error'|'info' = 'success') {
     setToast({ msg, type });
   }
@@ -634,11 +669,20 @@ export default function App() {
       {/* Page router */}
       <main>
         {nav.page === 'home' && (
-          <HomeFeed
+          <LandingView
             stories={stories}
-            onLike={handleLike}
-            onTipClick={setTipStory}
             onNavigate={navigate}
+            onAuthClick={() => setAuthOpen(true)}
+            session={session}
+          />
+        )}
+
+        {nav.page === 'library' && (
+          <LibraryView
+            stories={stories}
+            onNavigate={navigate}
+            onTipClick={setTipStory}
+            onLike={handleLike}
           />
         )}
 
@@ -659,7 +703,7 @@ export default function App() {
         {nav.page === 'story' && currentStory && (
           <StoryDetailView
             story={currentStory}
-            onBack={() => navigate('home')}
+            onBack={() => navigate('library')}
             onTipClick={setTipStory}
             onLike={handleLike}
             onNavigate={navigate}
@@ -670,8 +714,8 @@ export default function App() {
           <div className="max-w-3xl mx-auto px-6 py-20 text-center">
             <p className="text-6xl mb-4">🔍</p>
             <p className="text-[var(--text-secondary)] font-bold text-lg">Story not found</p>
-            <button onClick={() => navigate('home')} className="mt-5 text-sm text-[var(--accent-forest)] hover:underline transition-colors font-bold">
-              ← Back to stories
+            <button onClick={() => navigate('library')} className="mt-5 text-sm text-[var(--accent-forest)] hover:underline transition-colors font-bold cursor-pointer">
+              ← Back to library
             </button>
           </div>
         )}

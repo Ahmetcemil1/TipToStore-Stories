@@ -5,7 +5,7 @@ import { useAccount } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Story } from '../types';
 
-type Page = 'home' | 'about' | 'write' | 'story' | 'author';
+type Page = 'home' | 'about' | 'write' | 'story' | 'author' | 'library';
 
 interface WriteViewProps {
   onPublish: (story: Story) => void;
@@ -86,6 +86,21 @@ export function WriteView({ onPublish, onNavigate, showToast, session, stories }
     setCustomImgAlt('');
   }
 
+  function handleIllustrationUpload(type: 'single' | 'chapter', e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('Illustration image must be under 2MB to keep Filecoin payload efficient.', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const dataUrl = ev.target?.result as string;
+      insertMarkdownImage(type, dataUrl, file.name.split('.')[0] || 'Uploaded Illustration');
+    };
+    reader.readAsDataURL(file);
+  }
+
   function renderImagePicker(type: 'single' | 'chapter') {
     return (
       <div className="mt-3 p-4 border border-[var(--accent-forest)]/20 bg-[var(--bg-secondary)] rounded-xl space-y-3 animate-fade-in-up text-left">
@@ -138,6 +153,30 @@ export function WriteView({ onPublish, onNavigate, showToast, session, stories }
           >
             Insert Custom Image Link
           </button>
+        </div>
+
+        {/* Local Image File Upload */}
+        <div className="pt-2 border-t border-[var(--border-strong)] space-y-2">
+          <label className="block text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Or Upload Local Image</label>
+          <div className="flex items-center gap-3">
+            <input
+              type="file"
+              accept="image/*"
+              id={`illustration-upload-${type}`}
+              className="hidden"
+              onChange={(e) => handleIllustrationUpload(type, e)}
+            />
+            <label
+              htmlFor={`illustration-upload-${type}`}
+              className="px-4 py-2 text-xs rounded-xl border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-black/30 bg-[var(--bg-card)] cursor-pointer transition-all font-bold flex items-center gap-1.5 shadow-sm"
+            >
+              <svg className="w-3.5 h-3.5 text-[var(--accent-forest)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Choose Image File (max 2MB)
+            </label>
+            <span className="text-[10px] text-[var(--text-muted)] font-medium">Auto-converts to Base64 to bundle inside Filecoin dataset</span>
+          </div>
         </div>
       </div>
     );

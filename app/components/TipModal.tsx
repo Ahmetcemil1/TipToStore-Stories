@@ -30,7 +30,7 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
   const { isConnected } = useAccount();
   const { sendTransactionAsync } = useSendTransaction();
 
-  const [selected, setSelected] = useState<number | null>(0.10);
+  const [selected, setSelected] = useState<number | null>(1.00);
   const [custom, setCustom] = useState('');
   const [loading, setLoading] = useState(false);
   const [txError, setTxError] = useState<string | null>(null);

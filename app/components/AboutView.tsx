@@ -1,6 +1,6 @@
 'use client';
 
-type Page = 'home' | 'about' | 'write' | 'story' | 'author';
+type Page = 'home' | 'about' | 'write' | 'story' | 'author' | 'library';
 
 interface AboutViewProps {
   onNavigate: (page: Page, id?: string) => void;
@@ -28,7 +28,7 @@ const HOW_IT_WORKS = [
   {
     step: '04',
     title: 'Readers Tip Authors',
-    desc: "Readers send tips in USDFC to support authors they love. 100% of tips go directly to the author's withdrawable balance — nothing is deducted automatically.",
+    desc: "Readers send tips in USDFC to support authors they love. 90% of tips go directly to the author's withdrawable balance, and 10% is collected as a platform fee to support server hosting and IPFS pinning.",
     color: 'var(--accent-ochre)',
   },
   {
@@ -257,7 +257,7 @@ export function AboutView({ onNavigate }: AboutViewProps) {
           {[
             { label: 'Story Length', value: 'Unlimited', sub: 'Multi-chapter support · No page limit' },
             { label: 'Cover Photos', value: 'Supported', sub: 'Images pinned to IPFS alongside content' },
-            { label: 'Storage Cost', value: '~$0.12/mo', sub: 'Per story · Funded by community tips' },
+            { label: 'Storage Cost', value: '$0.05/mo', sub: 'Per story · Funded by community tips' },
             { label: 'Data Format', value: 'IPFS CID', sub: 'Immutable content address · Cannot 404' },
             { label: 'Proof System', value: 'PDP (PoRep)', sub: 'Proof every 30s · On-chain verification' },
             { label: 'Payments', value: 'USDFC', sub: 'FRC-46 stablecoin · Direct to author' },

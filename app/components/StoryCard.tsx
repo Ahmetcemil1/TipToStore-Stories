@@ -2,7 +2,7 @@
 
 import { Story } from '../types';
 
-type Page = 'home' | 'about' | 'write' | 'story' | 'author';
+type Page = 'home' | 'about' | 'write' | 'story' | 'author' | 'library';
 
 interface StoryCardProps {
   story: Story;

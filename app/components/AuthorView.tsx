@@ -5,7 +5,7 @@ import { useAccount, useBalance } from 'wagmi';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Story, TipRecord } from '../types';
 
-type Page = 'home' | 'about' | 'write' | 'story' | 'author';
+type Page = 'home' | 'about' | 'write' | 'story' | 'author' | 'library';
 
 interface AuthorViewProps {
   address: string;
