@@ -88,6 +88,11 @@ await synapse.payments.topUpRail({ railId, amount: tipUSDFC });
 await warmStorage.upsertDataSet(dataSetId, { endEpoch: newEndEpoch });
 ```
 
+### 4. Advanced Architecture (Type Safety & Efficiency)
+- **Extended Interface Pattern**: To ensure absolute type safety while working around incomplete typings in early SDK versions, the codebase defines formal contract interfaces (`ExtendedSynapse` and `ExtendedWarmStorage`) in [filecoin.ts](file:///home/zenhor/Masaüstü/filecoin/tipto-store/app/services/filecoin.ts). This avoids scattered `as any` casting and maintains strict type checking.
+- **Check-or-Create Payment Rails**: Tipping multiple times leverages a cache-checked `railId` map. Before calling `createRail` on-chain, the system queries the cache to reuse existing author-to-reader channels, saving gas and reducing state clutter.
+- **Strict Error Propagation**: Rather than swallowing exceptions in blockchain calls, all asynchronous steps in the Filecoin/USDFC pipeline throw explicit descriptive errors so that the client UI can notify the user immediately of transaction failures.
+
 ---
 
 ## 🚀 Quick Start
