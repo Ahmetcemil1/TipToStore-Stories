@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAccount, useBalance } from 'wagmi';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Story, TipRecord } from '../types';
 
 type Page = 'home' | 'about' | 'write' | 'story' | 'author';
@@ -25,30 +27,58 @@ function storagePercent(hours: number, max: number) {
 
 export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClick }: AuthorViewProps) {
   const [profile, setProfile] = useState<{ username: string; email: string; avatar: string; bio: string; walletAddress: string } | null>(null);
+  const [isOwnProfile, setIsOwnProfile] = useState(false);
+
+  // Wagmi Hooks for real wallet data
+  const { isConnected, address: connectedAddress } = useAccount();
+  
+  // Fetch real FIL balance on Calibration / Mainnet
+  const { data: balanceData } = useBalance({
+    address: address.startsWith('0x') && address.length === 42 ? (address as `0x${string}`) : undefined,
+  });
 
   useEffect(() => {
     // 1. Check if the address belongs to the active session
     const sessionRaw = localStorage.getItem('tiptostore_session');
+    let sessionAddress = '';
     if (sessionRaw) {
       const session = JSON.parse(sessionRaw);
+      sessionAddress = session.walletAddress;
       if (session.walletAddress.toLowerCase() === address.toLowerCase()) {
         setProfile(session);
+        setIsOwnProfile(true);
         return;
       }
     }
 
-    // 2. Check in all registered users
+    // 2. Check if it matches the connected Web3 wallet address directly
+    if (connectedAddress && connectedAddress.toLowerCase() === address.toLowerCase()) {
+      setIsOwnProfile(true);
+      // Create a profile for the connected wallet
+      const mockProfile = {
+        username: sessionRaw ? JSON.parse(sessionRaw).username : `Wallet ${shortenAddr(connectedAddress)}`,
+        email: '',
+        avatar: '🦊',
+        bio: 'Web3 connected wallet writer.',
+        walletAddress: connectedAddress,
+      };
+      setProfile(mockProfile);
+      return;
+    }
+
+    // 3. Check in all registered users
     const usersRaw = localStorage.getItem('tiptostore_users');
     if (usersRaw) {
       const users = JSON.parse(usersRaw);
       const found = users.find((u: any) => u.walletAddress.toLowerCase() === address.toLowerCase());
       if (found) {
         setProfile(found);
+        setIsOwnProfile(found.walletAddress.toLowerCase() === sessionAddress.toLowerCase());
         return;
       }
     }
 
-    // 3. Fallback for seed stories
+    // 4. Fallback for seed stories
     const seedAuthors: Record<string, { username: string; avatar: string; bio: string }> = {
       '0xalicef4b2e8a1d3c2b9e7f6a5d4c3b2a1e9f8d7c6': {
         username: 'Alice (Arctic Archivist)',
@@ -86,6 +116,7 @@ export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClic
         bio: seedAuthors[key].bio,
         walletAddress: address
       });
+      setIsOwnProfile(false);
     } else {
       // Generic guest profile
       setProfile({
@@ -95,8 +126,9 @@ export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClic
         bio: 'TipToStore user profile.',
         walletAddress: address
       });
+      setIsOwnProfile(false);
     }
-  }, [address]);
+  }, [address, connectedAddress]);
 
   // Find stories by this author
   const authorStories = stories.filter(
@@ -108,11 +140,7 @@ export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClic
   const totalViews = authorStories.reduce((a, s) => a + s.views, 0);
   const activeStories = authorStories.filter(s => s.status === 'ACTIVE').length;
 
-  // Render tipping history for this profile only if tips are logged
-  const givenTips = tipHistory.filter(t => {
-    // If it's a seed story author, show relevant seeds, else show empty or filter by tx address if recorded
-    return true; // For demo purposes, we show the tipping feed
-  });
+  const givenTips = tipHistory;
 
   if (!profile) {
     return (
@@ -154,11 +182,53 @@ export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClic
         </div>
       </div>
 
+      {/* Web3 Wallet Integration Status (in profile) */}
+      {isOwnProfile && (
+        <div className="rounded-2xl p-6 mb-8 border border-[var(--border-strong)] bg-[var(--bg-secondary)] shadow-sm">
+          <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-3">🔌 Web3 Wallet Connection</h3>
+          {isConnected && connectedAddress ? (
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <p className="text-xs text-[var(--text-muted)] uppercase tracking-wider font-bold">Connected Wallet Address</p>
+                <p className="text-sm text-[var(--text-primary)] font-mono break-all mt-0.5">{connectedAddress}</p>
+                <div className="flex gap-4 mt-2">
+                  <div className="text-xs">
+                    <span className="text-[var(--text-secondary)] font-medium">FIL Balance: </span>
+                    <span className="text-[var(--accent-forest)] font-bold">
+                      {balanceData ? `${parseFloat(balanceData.formatted).toFixed(4)} ${balanceData.symbol}` : 'Loading...'}
+                    </span>
+                  </div>
+                  <div className="text-xs">
+                    <span className="text-[var(--text-secondary)] font-medium">Network: </span>
+                    <span className="text-[var(--accent-sage)] font-bold">Filecoin Calibration Testnet</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-shrink-0">
+                <ConnectButton showBalance={false} chainStatus="name" accountStatus="address" />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div>
+                <p className="text-sm font-bold text-[var(--accent-ochre)] mb-1">Web3 Connection Required</p>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+                  Your Web3 wallet is not connected. To publish books, tip other authors, or resurrect expired storage deals on-chain, please connect your wallet below.
+                </p>
+              </div>
+              <div className="inline-block flex-shrink-0">
+                <ConnectButton label="Connect MetaMask / WalletConnect" />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
         {[
           { label: 'Stories',     value: authorStories.length, color:'var(--accent-forest)', icon:'📚' },
-          { label: 'USDFC Earned',value: `$${totalTips.toFixed(0)}`, color:'var(--accent-forest)', icon:'💰' },
+          { label: 'USDFC Earned',value: `$${totalTips.toFixed(2)}`, color:'var(--accent-forest)', icon:'💰' },
           { label: 'Total Likes', value: totalLikes.toLocaleString(), color:'var(--accent-clay)', icon:'❤️' },
           { label: 'Total Views', value: totalViews.toLocaleString(), color:'var(--accent-sage)', icon:'👁️' },
         ].map(s => (
@@ -264,7 +334,7 @@ export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClic
                 {givenTips.map((tip, i) => (
                   <tr key={i} className="border-b border-[var(--border-strong)] last:border-0 hover:bg-black/5 transition-all">
                     <td className="px-4 py-3 text-[var(--text-primary)] font-serif text-xs font-bold">{tip.storyTitle}</td>
-                    <td className="px-4 py-3 text-right text-[var(--accent-forest)] font-bold text-xs">${tip.amount} USDFC</td>
+                    <td className="px-4 py-3 text-right text-[var(--accent-forest)] font-bold text-xs">${tip.amount.toFixed(2)} USDFC</td>
                     <td className="px-4 py-3 text-right text-[var(--text-muted)] font-mono text-[11px] hidden sm:table-cell">{tip.txHash}</td>
                     <td className="px-4 py-3 text-right text-[var(--text-secondary)] text-xs hidden sm:table-cell">{new Date(tip.timestamp).toLocaleDateString()}</td>
                   </tr>

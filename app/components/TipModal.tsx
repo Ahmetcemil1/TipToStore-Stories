@@ -1,13 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSendTransaction } from 'wagmi';
+import { parseEther } from 'viem';
 import { Story } from '../types';
 
 interface TipModalProps {
   story: Story;
   onClose: () => void;
-  onTip: (storyId: string, amount: number) => void;
+  onTip: (storyId: string, amount: number, txHash?: string) => void;
 }
 
 function storagePercent(hours: number, max: number) {
@@ -21,27 +22,66 @@ function barColor(pct: number) {
   return 'var(--accent-clay)';
 }
 
-const PRESETS = [1, 5, 10, 25];
+// Realistic low Filecoin storage prices
+const PRESETS = [0.05, 0.10, 0.20, 0.50];
 
 export function TipModal({ story, onClose, onTip }: TipModalProps) {
-  const { isConnected } = useAccount();
-  const [selected, setSelected] = useState<number | null>(5);
+  const { isConnected, address } = useAccount();
+  const { sendTransactionAsync } = useSendTransaction();
+
+  const [selected, setSelected] = useState<number | null>(0.10);
   const [custom, setCustom] = useState('');
   const [loading, setLoading] = useState(false);
+  const [txError, setTxError] = useState<string | null>(null);
 
   const finalAmount = selected ?? (custom ? parseFloat(custom) : 0);
   const pct = storagePercent(story.hoursRemaining, story.maxHours);
-  const addHours = finalAmount > 0 ? Math.round(finalAmount * 24) : 0;
+  
+  // Calculate storage time extension based on new pricing
+  // $0.05 = 1 month (720h), $0.10 = 3 months (2160h), etc.
+  // Formula: hours = (finalAmount / 0.05) * 720
+  const addHours = finalAmount > 0 ? Math.round((finalAmount / 0.05) * 720) : 0;
 
+  // Attempt real transaction
   const handleSend = async () => {
-    if (!isConnected) return;
+    if (!isConnected) {
+      setTxError('Please connect your Web3 wallet first.');
+      return;
+    }
     if (finalAmount <= 0) return;
+    
     setLoading(true);
-    // Simulate tx delay
-    await new Promise(r => setTimeout(r, 1800));
-    onTip(story.id, finalAmount);
-    setLoading(false);
-    onClose();
+    setTxError(null);
+
+    try {
+      // 1. Send actual Testnet FIL transaction to the author (0.1 FIL per $0.10 USDFC)
+      const filValue = (finalAmount * 1.0).toString(); // e.g. $0.10 tip = 1 FIL
+      
+      const tx = await sendTransactionAsync({
+        to: story.authorFull as `0x${string}`,
+        value: parseEther(filValue),
+      });
+
+      // Transaction submitted successfully
+      onTip(story.id, finalAmount, tx);
+      setLoading(false);
+      onClose();
+    } catch (err: any) {
+      console.error('Transaction failed:', err);
+      setTxError(err.message || 'Transaction rejected or failed. Check your wallet balance.');
+      setLoading(false);
+    }
+  };
+
+  // Fallback simulation (for testing without testnet tokens)
+  const handleSimulate = () => {
+    setLoading(true);
+    setTimeout(() => {
+      const mockTx = `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
+      onTip(story.id, finalAmount, mockTx);
+      setLoading(false);
+      onClose();
+    }, 1200);
   };
 
   return (
@@ -57,7 +97,7 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
         <div className="flex justify-between items-start mb-5">
           <div>
             <h3 className="text-lg font-bold font-serif text-[var(--text-primary)]">Tip & Extend Storage</h3>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">100% goes to the author • Storage auto-renewed on Filecoin</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">Fund real-world low-cost Filecoin storage leases</p>
           </div>
           <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-xl leading-none p-1">✕</button>
         </div>
@@ -66,7 +106,6 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
         <div
           className="rounded-xl p-3.5 mb-5 border border-[var(--border-strong)] bg-[var(--bg-secondary)]"
         >
-          {/* Cover thumbnail */}
           {story.coverImage && (
             <div
               className="h-16 rounded-lg mb-2.5 overflow-hidden"
@@ -101,57 +140,79 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
           {PRESETS.map(p => (
             <button
               key={p}
-              onClick={() => { setSelected(p); setCustom(''); }}
+              onClick={() => { setSelected(p); setCustom(''); setTxError(null); }}
               className={`py-2 rounded-xl text-sm font-bold transition-all border ${
                 selected === p
                   ? 'bg-[var(--accent-forest)]/10 border-[var(--accent-forest)]/30 text-[var(--accent-forest)] shadow-sm'
                   : 'border-[var(--border-strong)] bg-[var(--bg-primary)] text-[var(--text-secondary)] hover:border-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
-              ${p}
+              ${p.toFixed(2)}
             </button>
           ))}
         </div>
 
         <input
           type="number"
-          placeholder="Custom amount…"
+          placeholder="Custom amount in USDFC…"
           value={custom}
-          onChange={e => { setCustom(e.target.value); setSelected(null); }}
+          onChange={e => { setCustom(e.target.value); setSelected(null); setTxError(null); }}
           className="w-full px-4 py-2.5 text-sm rounded-xl border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] mb-4 focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-primary)]"
-          min="0.1"
-          step="0.1"
+          min="0.01"
+          step="0.01"
         />
 
         {finalAmount > 0 && (
-          <div className="flex justify-between text-xs text-[var(--text-secondary)] mb-4 px-1">
-            <span>Tip amount</span>
-            <span className="text-[var(--accent-forest)] font-bold">${finalAmount} USDFC → +{addHours}h storage</span>
+          <div className="flex flex-col gap-1 text-xs text-[var(--text-secondary)] mb-4 px-1">
+            <div className="flex justify-between">
+              <span>Tip Amount</span>
+              <span className="text-[var(--accent-forest)] font-bold">${finalAmount.toFixed(2)} USDFC ({ (finalAmount * 10).toFixed(1) } FIL)</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Storage Extension</span>
+              <span className="text-[var(--accent-forest)] font-bold">+{addHours} hours (~{Math.round(addHours / 24)} days)</span>
+            </div>
           </div>
         )}
 
-        {!isConnected && (
-          <p className="text-xs text-[var(--accent-ochre)] text-center mb-3 bg-[var(--accent-ochre)]/10 border border-[var(--accent-ochre)]/20 rounded-lg py-2">
-            ⚠️ Connect your wallet to send a tip
-          </p>
+        {txError && (
+          <div className="text-xs text-[var(--accent-clay)] mb-4 bg-[var(--accent-clay)]/5 border border-[var(--accent-clay)]/20 rounded-lg p-2.5 leading-relaxed">
+            <p className="font-bold mb-1">❌ Transaction Error:</p>
+            <p className="font-mono break-all">{txError.slice(0, 150)}...</p>
+            <button
+              onClick={handleSimulate}
+              className="mt-2 text-xs font-bold underline text-[var(--accent-forest)] block hover:text-[var(--accent-forest-hover)]"
+            >
+              💡 Skip & complete as a simulated test transaction instead
+            </button>
+          </div>
+        )}
+
+        {!isConnected ? (
+          <div className="rounded-xl p-3 border border-[var(--accent-ochre)]/20 bg-[var(--accent-ochre)]/5 text-center mb-4">
+            <p className="text-xs text-[var(--accent-ochre)] font-bold mb-2">
+              ⚠️ Web3 Wallet is not connected
+            </p>
+            <p className="text-[10px] text-[var(--text-secondary)] mb-1">
+              You must connect your Metamask/WalletConnect to sign real transactions on the Filecoin Calibration network.
+            </p>
+          </div>
+        ) : (
+          <button
+            disabled={finalAmount <= 0 || loading}
+            onClick={handleSend}
+            className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed btn-primary transition-all mb-2"
+          >
+            {loading ? 'Confirming in Wallet…' : `⛓️ Send Real Transaction ($${finalAmount.toFixed(2)})`}
+          </button>
         )}
 
         <button
-          disabled={!isConnected || finalAmount <= 0 || loading}
-          onClick={handleSend}
-          className="w-full py-3 rounded-xl font-bold text-sm transition-all text-white disabled:opacity-40 disabled:cursor-not-allowed btn-primary"
+          onClick={handleSimulate}
+          disabled={finalAmount <= 0 || loading}
+          className="w-full py-2 rounded-xl text-xs font-bold border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-black/5 transition-all bg-[var(--bg-card)]"
         >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              Sending transaction…
-            </span>
-          ) : (
-            `⚡ Send $${finalAmount > 0 ? finalAmount : '?'} USDFC`
-          )}
+          🧪 Simulate Tip (No Wallet Connection Needed)
         </button>
 
         <p className="text-center text-[10px] text-[var(--text-muted)] mt-4">

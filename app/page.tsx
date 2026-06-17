@@ -197,10 +197,10 @@ function HomeFeed({
             <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-4">⚡ Storage Extension Rules</h3>
             <div className="space-y-2.5">
               {[
-                { amount: '$1',  result: '+24h storage' },
-                { amount: '$5',  result: '+5 days storage' },
-                { amount: '$10', result: '+10 days storage' },
-                { amount: '$25', result: '+25 days storage' },
+                { amount: '$0.05', result: '+30 days (1 month)' },
+                { amount: '$0.10', result: '+90 days (3 months)' },
+                { amount: '$0.20', result: '+180 days (6 months)' },
+                { amount: '$0.50', result: '+365 days (1 year)' },
               ].map(r => (
                 <div key={r.amount} className="flex justify-between items-center text-xs py-2 border-b border-black/5 last:border-0 font-medium">
                   <span className="text-[var(--accent-forest)] font-bold">{r.amount} USDFC</span>
@@ -327,11 +327,11 @@ export default function App() {
     );
   }
 
-  function handleTip(storyId: string, amount: number) {
+  function handleTip(storyId: string, amount: number, txHash?: string) {
+    const addHours = Math.round((amount / 0.05) * 720);
     setStories(prev =>
       prev.map(s => {
         if (s.id !== storyId) return s;
-        const addHours = Math.round(amount * 24);
         const next = s.hoursRemaining + addHours;
         return {
           ...s,
@@ -348,10 +348,10 @@ export default function App() {
       storyTitle: story?.title ?? 'Unknown',
       amount,
       timestamp: new Date().toISOString(),
-      txHash: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
+      txHash: txHash ?? `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
     };
     setTipHistory(prev => [rec, ...prev]);
-    showToast(`✅ Sent $${amount} USDFC — storage extended by ${Math.round(amount)} day(s)!`);
+    showToast(`✅ Sent $${amount.toFixed(2)} USDFC — storage extended by ~${Math.round(addHours / 24)} day(s)!`);
   }
 
   function handlePublish(story: Story) {
