@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount } from 'wagmi';
 
 type Page = 'home' | 'about' | 'write' | 'story' | 'author';
 
@@ -15,12 +14,11 @@ interface NavbarProps {
 }
 
 export function Navbar({ currentPage, onNavigate, session, onAuthClick, onLogout }: NavbarProps) {
-  const { isConnected, address } = useAccount();
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const links: { id: Page; label: string; icon: React.ReactNode }[] = [
+  const links = [
     {
-      id: 'home',
+      id: 'home' as Page,
       label: 'Stories',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -28,17 +26,17 @@ export function Navbar({ currentPage, onNavigate, session, onAuthClick, onLogout
         </svg>
       )
     },
-    {
-      id: 'write',
+    ...(session ? [{
+      id: 'write' as Page,
       label: 'Publish',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
         </svg>
       )
-    },
+    }] : []),
     {
-      id: 'about',
+      id: 'about' as Page,
       label: 'About',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

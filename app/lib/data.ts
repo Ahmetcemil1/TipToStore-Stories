@@ -209,6 +209,22 @@ We write code today, hoping the decentralized network keeps execution alive tomo
 ];
 
 export const TIP_HISTORY_SEED = [
-  { storyId: 'story-001', storyTitle: 'The Last Filecoin Node', amount: 5, timestamp: '2026-06-17T10:22:00Z', txHash: '0xabc...123' },
-  { storyId: 'story-002', storyTitle: 'The Archivist of Neo-Istanbul', amount: 1, timestamp: '2026-06-16T14:05:00Z', txHash: '0xdef...456' },
+  { 
+    storyId: 'story-001', 
+    storyTitle: 'The Last Filecoin Node', 
+    amount: 5, 
+    timestamp: '2026-06-17T10:22:00Z', 
+    txHash: '0xabc...123',
+    tipperAddress: '0xbob99a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7',
+    authorAddress: '0xalicef4b2e8a1d3c2b9e7f6a5d4c3b2a1e9f8d7c6'
+  },
+  { 
+    storyId: 'story-002', 
+    storyTitle: 'The Archivist of Neo-Istanbul', 
+    amount: 1, 
+    timestamp: '2026-06-16T14:05:00Z', 
+    txHash: '0xdef...456',
+    tipperAddress: '0xalicef4b2e8a1d3c2b9e7f6a5d4c3b2a1e9f8d7c6',
+    authorAddress: '0xarchivist99e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6'
+  },
 ];

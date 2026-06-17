@@ -2,6 +2,15 @@
 
 import { useState } from 'react';
 
+interface UserData {
+  username: string;
+  email: string;
+  password?: string;
+  avatar: string;
+  bio: string;
+  walletAddress: string;
+}
+
 interface AuthModalProps {
   onClose: () => void;
   onLoginSuccess: (user: { username: string; email: string; avatar: string; bio: string; walletAddress: string }) => void;
@@ -34,10 +43,10 @@ export function AuthModal({ onClose, onLoginSuccess, showToast }: AuthModalProps
 
       // Read existing users
       const usersRaw = localStorage.getItem('tiptostore_users');
-      const users = usersRaw ? JSON.parse(usersRaw) : [];
+      const users: UserData[] = usersRaw ? JSON.parse(usersRaw) : [];
 
       // Check if user already exists
-      if (users.find((u: any) => u.email === email || u.username === username)) {
+      if (users.find((u: UserData) => u.email === email || u.username === username)) {
         showToast('Username or Email already registered.', 'error');
         return;
       }
@@ -45,7 +54,7 @@ export function AuthModal({ onClose, onLoginSuccess, showToast }: AuthModalProps
       // Create fake wallet address for the registered user
       const fakeWallet = `0x${Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`;
 
-      const newUser = {
+      const newUser: UserData = {
         username,
         email,
         password,
@@ -58,15 +67,15 @@ export function AuthModal({ onClose, onLoginSuccess, showToast }: AuthModalProps
       localStorage.setItem('tiptostore_users', JSON.stringify(users));
       localStorage.setItem('tiptostore_session', JSON.stringify(newUser));
 
-      showToast(`🎉 Registration successful! Welcome, ${username}.`, 'success');
+      showToast(`Registration successful! Welcome, ${username}.`, 'success');
       onLoginSuccess(newUser);
       onClose();
     } else {
       // Login flow
       const usersRaw = localStorage.getItem('tiptostore_users');
-      const users = usersRaw ? JSON.parse(usersRaw) : [];
+      const users: UserData[] = usersRaw ? JSON.parse(usersRaw) : [];
 
-      const foundUser = users.find((u: any) => u.email === email && u.password === password);
+      const foundUser = users.find((u: UserData) => u.email === email && u.password === password);
 
       if (!foundUser) {
         showToast('Invalid email or password.', 'error');
@@ -74,7 +83,7 @@ export function AuthModal({ onClose, onLoginSuccess, showToast }: AuthModalProps
       }
 
       localStorage.setItem('tiptostore_session', JSON.stringify(foundUser));
-      showToast(`👋 Welcome back, ${foundUser.username}!`, 'success');
+      showToast(`Welcome back, ${foundUser.username}!`, 'success');
       onLoginSuccess(foundUser);
       onClose();
     }

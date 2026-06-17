@@ -38,6 +38,41 @@ interface LoggedInUser {
   walletAddress: string;
 }
 
+function getFilterIcon(id: FilterType) {
+  switch (id) {
+    case 'all':
+      return (
+        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 017.843 4.582M12 3a8.997 8.997 0 00-7.843 4.582m15.686 0A11.953 11.953 0 0112 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0121 12c0 .778-.099 1.533-.284 2.253m0 0A11.952 11.952 0 0112 16.5c-2.998 0-5.74-1.1-7.843-2.918m0 0A8.959 8.959 0 013 12c0-.778.099-1.533.284-2.253" />
+        </svg>
+      );
+    case 'trending':
+      return (
+        <svg className="w-3.5 h-3.5 text-[var(--accent-clay)]" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+        </svg>
+      );
+    case 'active':
+      return (
+        <svg className="w-3.5 h-3.5 text-[var(--accent-forest)]" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      );
+    case 'expiring':
+      return (
+        <svg className="w-3.5 h-3.5 text-[var(--accent-ochre)]" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+      );
+    case 'expired':
+      return (
+        <svg className="w-3.5 h-3.5 text-[var(--text-secondary)]" fill="none" stroke="currentColor" strokeWidth="2.2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+        </svg>
+      );
+  }
+}
+
 // ─────────────────────────────────────
 //  Home feed
 // ─────────────────────────────────────
@@ -82,11 +117,11 @@ function HomeFeed({
     });
 
   const filterTabs: { id: FilterType; label: string }[] = [
-    { id: 'all',      label: '🌐 All' },
-    { id: 'trending', label: '🔥 Trending' },
-    { id: 'active',   label: '✅ Active' },
-    { id: 'expiring', label: '⚠️ Expiring' },
-    { id: 'expired',  label: '💀 Decayed' },
+    { id: 'all',      label: 'All' },
+    { id: 'trending', label: 'Trending' },
+    { id: 'active',   label: 'Active' },
+    { id: 'expiring', label: 'Expiring' },
+    { id: 'expired',  label: 'Decayed' },
   ];
 
   const sortOptions: { id: SortType; label: string }[] = [
@@ -105,14 +140,29 @@ function HomeFeed({
       <div className="rounded-2xl p-5 mb-8 border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm relative overflow-hidden">
         <div className="relative flex flex-col md:flex-row gap-5 items-start">
           <div className="flex-1">
-            <h2 className="font-bold font-serif text-[var(--text-primary)] mb-2 text-base">💡 How TipToStore Works</h2>
+            <h2 className="font-bold font-serif text-[var(--text-primary)] mb-2 text-base flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-[var(--accent-ochre)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 113.536 0V21h2v-2.243a5 5 0 013.536 0z" />
+              </svg>
+              How TipToStore Works
+            </h2>
             <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
-              Every story is stored as a <strong className="text-[var(--text-primary)]">Filecoin dataset</strong> via the Synapse SDK. Stories are <strong className="text-[var(--accent-forest)]">free to read</strong> — but decentralized storage isn't free. Readers tip authors in <strong className="text-[var(--accent-forest)]">USDFC</strong>. Each dollar of tips extends the story's storage lease on Filecoin. Popular stories survive. Ignored ones <em className="text-[var(--accent-clay)]">decay</em>.
+              Every story is stored as a <strong className="text-[var(--text-primary)]">Filecoin dataset</strong> via the Synapse SDK. Stories are <strong className="text-[var(--accent-forest)]">free to read</strong> — but decentralized storage isn&apos;t free. Readers tip authors in <strong className="text-[var(--accent-forest)]">USDFC</strong>. Each dollar of tips extends the story&apos;s storage lease on Filecoin. Popular stories survive. Ignored ones <em className="text-[var(--accent-clay)]">decay</em>.
             </p>
           </div>
-          <div className="flex flex-col gap-1.5 text-xs text-[var(--text-secondary)] shrink-0 font-medium bg-[var(--bg-secondary)] p-3 rounded-xl border border-[var(--border-strong)]">
-            {['📤 Write & pin to IPFS', '⛓️ Filecoin deal opens', '💸 Readers tip USDFC', '♾️ Storage renews or decays'].map(s => (
-              <div key={s} className="flex items-center gap-1.5">{s.split(' ')[0]} <span>{s.slice(2)}</span></div>
+          <div className="flex flex-col gap-2.5 text-xs text-[var(--text-secondary)] shrink-0 font-bold bg-[var(--bg-secondary)] p-4 rounded-xl border border-[var(--border-strong)]">
+            {[
+              { num: '1', text: 'Write & pin to IPFS' },
+              { num: '2', text: 'Filecoin deal opens' },
+              { num: '3', text: 'Readers tip USDFC' },
+              { num: '4', text: 'Storage extends/decays' }
+            ].map(s => (
+              <div key={s.num} className="flex items-center gap-2">
+                <span className="w-4 h-4 rounded-full bg-[var(--accent-forest)]/10 text-[var(--accent-forest)] text-[10px] font-extrabold flex items-center justify-center shrink-0">
+                  {s.num}
+                </span>
+                <span>{s.text}</span>
+              </div>
             ))}
           </div>
         </div>
@@ -129,23 +179,31 @@ function HomeFeed({
                 <button
                   key={tab.id}
                   onClick={() => setFilter(tab.id)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all flex items-center gap-1.5 ${
                     filter === tab.id
-                      ? 'bg-[var(--accent-forest)]/10 border-[var(--accent-forest)]/30 text-[var(--accent-forest)] font-bold'
-                      : 'border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                      ? 'bg-[var(--accent-forest)]/10 border-[var(--accent-forest)]/30 text-[var(--accent-forest)]'
+                      : 'border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-black/20'
                   }`}
                 >
-                  {tab.label}
+                  {getFilterIcon(tab.id)}
+                  <span>{tab.label}</span>
                 </button>
               ))}
             </div>
             {/* Search */}
-            <input
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              placeholder="🔍 Search stories…"
-              className="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-xl border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-card)]"
-            />
+            <div className="relative flex-1 min-w-0">
+              <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[var(--text-muted)]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </span>
+              <input
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                placeholder="Search stories…"
+                className="w-full pl-9 pr-4 py-1.5 text-sm rounded-xl border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-card)]"
+              />
+            </div>
           </div>
 
           {/* Sort */}
@@ -171,7 +229,11 @@ function HomeFeed({
           <div className="space-y-6">
             {filtered.length === 0 ? (
               <div className="rounded-2xl p-12 text-center border border-[var(--border-strong)] bg-[var(--bg-card)] shadow-sm">
-                <p className="text-5xl mb-3 animate-pulse">🔍</p>
+                <div className="w-12 h-12 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center mx-auto mb-4 border border-[var(--border-strong)] text-[var(--text-muted)]">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
                 <p className="text-[var(--text-primary)] font-bold font-serif text-lg">No stories found</p>
                 <p className="text-[var(--text-secondary)] text-sm mt-1">Try a different filter or search term</p>
               </div>
@@ -194,7 +256,12 @@ function HomeFeed({
         <aside className="lg:col-span-4 space-y-6">
           {/* Tip economics */}
           <div className="rounded-2xl p-5 border border-[var(--border-strong)] bg-[var(--bg-card)] shadow-sm sticky top-20">
-            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-4">⚡ Storage Extension Rules</h3>
+            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-4 flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-[var(--accent-ochre)]" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+              </svg>
+              Storage Extension Rules
+            </h3>
             <div className="space-y-2.5">
               {[
                 { amount: '$0.05', result: '+30 days (1 month)' },
@@ -215,7 +282,12 @@ function HomeFeed({
 
           {/* Viral reward */}
           <div className="rounded-2xl p-5 border border-[var(--border-subtle)] bg-[var(--bg-secondary)] shadow-sm">
-            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-2">🏆 Viral Reward Program</h3>
+            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-2 flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-[var(--accent-ochre)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a4 4 0 100-8 4 4 0 000 8zm0 0v6m-3 0h6M4 9h3v1H4V9zm13 0h3v1h-3V9z" />
+              </svg>
+              Viral Reward Program
+            </h3>
             <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
               Stories crossing <strong className="text-[var(--text-primary)]">10,000 likes</strong> trigger a <strong className="text-[var(--accent-forest)] font-bold">5 FIL</strong> bonus payout to the author from the network incentive pool.
             </p>
@@ -223,7 +295,13 @@ function HomeFeed({
 
           {/* Network info */}
           <div className="rounded-2xl p-5 border border-[var(--border-strong)] bg-[var(--bg-card)] shadow-sm">
-            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-3">🌐 Network Settings</h3>
+            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-3 flex items-center gap-1.5">
+              <svg className="w-4 h-4 text-[var(--accent-sage)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.6 9h16.8M3.6 15h16.8" />
+              </svg>
+              Network Settings
+            </h3>
             <div className="space-y-2.5">
               {[
                 { k: 'Network',      v: 'Filecoin Calibration' },
@@ -249,7 +327,7 @@ function HomeFeed({
 //  Root
 // ─────────────────────────────────────
 export default function App() {
-  const { isConnected, address } = useAccount();
+  const { isConnected, address: connectedAddress } = useAccount();
 
   const [stories,    setStories]    = useState<Story[]>(SEED_STORIES);
   const [tipHistory, setTipHistory] = useState<TipRecord[]>(TIP_HISTORY_SEED);
@@ -261,11 +339,42 @@ export default function App() {
   const [session, setSession] = useState<LoggedInUser | null>(null);
   const [authOpen, setAuthOpen] = useState(false);
 
-  // Load session from localStorage
+  // Author Earnings Balances
+  const [balances, setBalances] = useState<Record<string, number>>({});
+
+  // Load session and balances from localStorage
   useEffect(() => {
     const activeSession = localStorage.getItem('tiptostore_session');
     if (activeSession) {
-      setSession(JSON.parse(activeSession));
+      const parsed = JSON.parse(activeSession);
+      const t = setTimeout(() => {
+        setSession(parsed);
+      }, 0);
+      return () => clearTimeout(t);
+    }
+  }, []);
+
+  useEffect(() => {
+    const storedBalances = localStorage.getItem('tiptostore_balances');
+    const INITIAL_BALANCES: Record<string, number> = {
+      '0xalicef4b2e8a1d3c2b9e7f6a5d4c3b2a1e9f8d7c6': 45.0,
+      '0xarchivist99e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6': 78.0,
+      '0xdeepnode22d2a1b2c3d4e5f6a7b8c9d0e1f2a3b4': 12.0,
+      '0xbob99a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7': 12.0,
+      '0xpoet33b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8': 15.0
+    };
+
+    if (storedBalances) {
+      const t = setTimeout(() => {
+        setBalances(JSON.parse(storedBalances));
+      }, 0);
+      return () => clearTimeout(t);
+    } else {
+      const t = setTimeout(() => {
+        setBalances(INITIAL_BALANCES);
+        localStorage.setItem('tiptostore_balances', JSON.stringify(INITIAL_BALANCES));
+      }, 0);
+      return () => clearTimeout(t);
     }
   }, []);
 
@@ -274,6 +383,11 @@ export default function App() {
   }
 
   function navigate(page: Page, id?: string) {
+    if (page === 'write' && !session) {
+      showToast('Please Sign In to publish stories or books.', 'error');
+      setAuthOpen(true);
+      return;
+    }
     setNav({ page, id });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
@@ -328,7 +442,86 @@ export default function App() {
   }
 
   function handleTip(storyId: string, amount: number, txHash?: string) {
-    const addHours = Math.round((amount / 0.05) * 720);
+    setStories(prev =>
+      prev.map(s => {
+        if (s.id !== storyId) return s;
+        return {
+          ...s,
+          tipsReceived: s.tipsReceived + 1,
+          tipsUSDFC: +(s.tipsUSDFC + amount).toFixed(2),
+        };
+      })
+    );
+
+    const story = stories.find(s => s.id === storyId);
+    if (story) {
+      const authorAddr = story.authorFull.toLowerCase();
+      setBalances(prev => {
+        const nextBalances = {
+          ...prev,
+          [authorAddr]: +((prev[authorAddr] || 0) + amount).toFixed(2)
+        };
+        localStorage.setItem('tiptostore_balances', JSON.stringify(nextBalances));
+        return nextBalances;
+      });
+    }
+
+    const rec: TipRecord = {
+      storyId,
+      storyTitle: story?.title ?? 'Unknown',
+      amount,
+      timestamp: new Date().toISOString(),
+      txHash: txHash ?? `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
+      tipperAddress: connectedAddress || (session ? session.walletAddress : '0xAnonymousTipper'),
+      authorAddress: story?.authorFull ?? '',
+    };
+    setTipHistory(prev => [rec, ...prev]);
+    showToast(`✅ Sent $${amount.toFixed(2)} USDFC directly to the author's balance!`, 'success');
+  }
+
+  function handleWithdraw(authorAddress: string, amount: number) {
+    const key = authorAddress.toLowerCase();
+    const currentBal = balances[key] || 0;
+    if (currentBal < amount) {
+      showToast('Insufficient balance to withdraw.', 'error');
+      return false;
+    }
+
+    setBalances(prev => {
+      const nextBalances = {
+        ...prev,
+        [key]: +(prev[key] - amount).toFixed(2)
+      };
+      localStorage.setItem('tiptostore_balances', JSON.stringify(nextBalances));
+      return nextBalances;
+    });
+
+    showToast(`Successfully withdrew $${amount.toFixed(2)} USDFC to wallet!`, 'success');
+    return true;
+  }
+
+  function handleAllocateStorage(storyId: string, days: number, cost: number) {
+    const story = stories.find(s => s.id === storyId);
+    if (!story) return false;
+    const authorAddr = story.authorFull.toLowerCase();
+    const currentBal = balances[authorAddr] || 0;
+    if (currentBal < cost) {
+      showToast('Insufficient balance to extend storage.', 'error');
+      return false;
+    }
+
+    // Deduct balance
+    setBalances(prev => {
+      const nextBalances = {
+        ...prev,
+        [authorAddr]: +(prev[authorAddr] - cost).toFixed(2)
+      };
+      localStorage.setItem('tiptostore_balances', JSON.stringify(nextBalances));
+      return nextBalances;
+    });
+
+    // Update story storage
+    const addHours = days * 24;
     setStories(prev =>
       prev.map(s => {
         if (s.id !== storyId) return s;
@@ -336,22 +529,14 @@ export default function App() {
         return {
           ...s,
           hoursRemaining: next,
-          tipsReceived: s.tipsReceived + 1,
-          tipsUSDFC: +(s.tipsUSDFC + amount).toFixed(2),
+          maxHours: Math.max(s.maxHours, next),
           status: next === 0 ? 'EXPIRED' : next < 24 ? 'EXPIRING' : 'ACTIVE',
         };
       })
     );
-    const story = stories.find(s => s.id === storyId);
-    const rec: TipRecord = {
-      storyId,
-      storyTitle: story?.title ?? 'Unknown',
-      amount,
-      timestamp: new Date().toISOString(),
-      txHash: txHash ?? `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
-    };
-    setTipHistory(prev => [rec, ...prev]);
-    showToast(`✅ Sent $${amount.toFixed(2)} USDFC — storage extended by ~${Math.round(addHours / 24)} day(s)!`);
+
+    showToast(`Storage extended by ${days} days for "${story.title}"!`, 'success');
+    return true;
   }
 
   function handlePublish(story: Story) {
@@ -423,6 +608,8 @@ export default function App() {
             onPublish={handlePublish}
             onNavigate={navigate}
             showToast={showToast}
+            session={session}
+            stories={stories}
           />
         )}
 
@@ -451,6 +638,9 @@ export default function App() {
             address={authorAddress}
             stories={stories}
             tipHistory={tipHistory}
+            balances={balances}
+            onWithdraw={handleWithdraw}
+            onAllocateStorage={handleAllocateStorage}
             onNavigate={navigate}
             onTipClick={setTipStory}
           />

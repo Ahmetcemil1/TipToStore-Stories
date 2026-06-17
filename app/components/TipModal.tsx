@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useAccount, useSendTransaction } from 'wagmi';
 import { parseEther } from 'viem';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { Story } from '../types';
 
 interface TipModalProps {
@@ -22,11 +23,11 @@ function barColor(pct: number) {
   return 'var(--accent-clay)';
 }
 
-// Realistic low Filecoin storage prices
-const PRESETS = [0.05, 0.10, 0.20, 0.50];
+// Reader support tipping presets
+const PRESETS = [1.00, 5.00, 10.00, 25.00];
 
 export function TipModal({ story, onClose, onTip }: TipModalProps) {
-  const { isConnected, address } = useAccount();
+  const { isConnected } = useAccount();
   const { sendTransactionAsync } = useSendTransaction();
 
   const [selected, setSelected] = useState<number | null>(0.10);
@@ -37,10 +38,7 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
   const finalAmount = selected ?? (custom ? parseFloat(custom) : 0);
   const pct = storagePercent(story.hoursRemaining, story.maxHours);
   
-  // Calculate storage time extension based on new pricing
-  // $0.05 = 1 month (720h), $0.10 = 3 months (2160h), etc.
-  // Formula: hours = (finalAmount / 0.05) * 720
-  const addHours = finalAmount > 0 ? Math.round((finalAmount / 0.05) * 720) : 0;
+
 
   // Attempt real transaction
   const handleSend = async () => {
@@ -66,9 +64,10 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
       onTip(story.id, finalAmount, tx);
       setLoading(false);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Transaction failed:', err);
-      setTxError(err.message || 'Transaction rejected or failed. Check your wallet balance.');
+      const error = err as Error;
+      setTxError(error.message || 'Transaction rejected or failed. Check your wallet balance.');
       setLoading(false);
     }
   };
@@ -96,8 +95,8 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
         {/* Header */}
         <div className="flex justify-between items-start mb-5">
           <div>
-            <h3 className="text-lg font-bold font-serif text-[var(--text-primary)]">Tip & Extend Storage</h3>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">Fund real-world low-cost Filecoin storage leases</p>
+            <h3 className="text-lg font-bold font-serif text-[var(--text-primary)]">Support Author</h3>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">Send a tip directly to the author</p>
           </div>
           <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors text-xl leading-none p-1">✕</button>
         </div>
@@ -164,14 +163,13 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
 
         {finalAmount > 0 && (
           <div className="flex flex-col gap-1 text-xs text-[var(--text-secondary)] mb-4 px-1">
-            <div className="flex justify-between">
+            <div className="flex justify-between mb-1.5">
               <span>Tip Amount</span>
-              <span className="text-[var(--accent-forest)] font-bold">${finalAmount.toFixed(2)} USDFC ({ (finalAmount * 10).toFixed(1) } FIL)</span>
+              <span className="text-[var(--accent-forest)] font-bold">${finalAmount.toFixed(2)} USDFC ({ (finalAmount * 1.0).toFixed(1) } FIL)</span>
             </div>
-            <div className="flex justify-between">
-              <span>Storage Extension</span>
-              <span className="text-[var(--accent-forest)] font-bold">+{addHours} hours (~{Math.round(addHours / 24)} days)</span>
-            </div>
+            <p className="text-[10px] text-[var(--text-muted)] leading-relaxed font-medium">
+              💡 100% of this tip goes to the author&apos;s withdrawable balance. The author can use their balance to extend their stories&apos; storage leases on Filecoin or withdraw it.
+            </p>
           </div>
         )}
 
@@ -189,31 +187,39 @@ export function TipModal({ story, onClose, onTip }: TipModalProps) {
         )}
 
         {!isConnected ? (
-          <div className="rounded-xl p-3 border border-[var(--accent-ochre)]/20 bg-[var(--accent-ochre)]/5 text-center mb-4">
-            <p className="text-xs text-[var(--accent-ochre)] font-bold mb-2">
-              ⚠️ Web3 Wallet is not connected
+          <div className="rounded-xl p-4 border border-[var(--accent-ochre)]/20 bg-[var(--accent-ochre)]/5 text-center mb-4 flex flex-col items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-[var(--accent-ochre)] font-bold">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              </svg>
+              <span>Web3 Wallet Connection Required</span>
+            </div>
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
+              Tipping and storage extensions interact directly with the Filecoin network. Connect MetaMask or WalletConnect to tip this author.
             </p>
-            <p className="text-[10px] text-[var(--text-secondary)] mb-1">
-              You must connect your Metamask/WalletConnect to sign real transactions on the Filecoin Calibration network.
-            </p>
+            <div className="inline-block mt-1">
+              <ConnectButton label="Connect Wallet to Tip" />
+            </div>
           </div>
         ) : (
-          <button
-            disabled={finalAmount <= 0 || loading}
-            onClick={handleSend}
-            className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed btn-primary transition-all mb-2"
-          >
-            {loading ? 'Confirming in Wallet…' : `⛓️ Send Real Transaction ($${finalAmount.toFixed(2)})`}
-          </button>
-        )}
+          <>
+            <button
+              disabled={finalAmount <= 0 || loading}
+              onClick={handleSend}
+              className="w-full py-3 rounded-xl font-bold text-sm text-white disabled:opacity-40 disabled:cursor-not-allowed btn-primary transition-all mb-2"
+            >
+              {loading ? 'Confirming in Wallet…' : `Send Real Transaction ($${finalAmount.toFixed(2)})`}
+            </button>
 
-        <button
-          onClick={handleSimulate}
-          disabled={finalAmount <= 0 || loading}
-          className="w-full py-2 rounded-xl text-xs font-bold border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-black/5 transition-all bg-[var(--bg-card)]"
-        >
-          🧪 Simulate Tip (No Wallet Connection Needed)
-        </button>
+            <button
+              onClick={handleSimulate}
+              disabled={finalAmount <= 0 || loading}
+              className="w-full py-2 rounded-xl text-xs font-bold border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-black/5 transition-all bg-[var(--bg-card)]"
+            >
+              Simulate Sandbox Tip (Gasless Test)
+            </button>
+          </>
+        )}
 
         <p className="text-center text-[10px] text-[var(--text-muted)] mt-4">
           Powered by Filecoin Synapse SDK • Calibration Testnet

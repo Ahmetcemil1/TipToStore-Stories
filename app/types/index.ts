@@ -33,6 +33,8 @@ export interface TipRecord {
   amount: number;
   timestamp: string;
   txHash: string;
+  tipperAddress?: string;
+  authorAddress?: string;
 }
 
 export interface AuthorProfile {

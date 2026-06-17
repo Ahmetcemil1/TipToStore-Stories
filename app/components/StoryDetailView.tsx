@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useAccount } from 'wagmi';
 import { Story } from '../types';
 
 type Page = 'home' | 'about' | 'write' | 'story' | 'author';
@@ -26,7 +25,6 @@ function barColor(pct: number) {
 }
 
 export function StoryDetailView({ story, onBack, onTipClick, onLike, onNavigate }: StoryDetailViewProps) {
-  const { isConnected } = useAccount();
   const [currentChapter, setCurrentChapter] = useState(0);
 
   const pct = storagePercent(story.hoursRemaining, story.maxHours);
@@ -85,14 +83,31 @@ export function StoryDetailView({ story, onBack, onTipClick, onLike, onNavigate 
 
         {/* Status badge */}
         <div className="absolute top-4 right-4">
-          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-sm shadow-sm ${
+          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider backdrop-blur-sm shadow-sm flex items-center gap-1.5 ${
             story.status === 'ACTIVE'   ? 'bg-[var(--bg-primary)]/95 text-[var(--accent-forest)] border border-[var(--accent-forest)]/30' :
             story.status === 'EXPIRING' ? 'bg-[var(--bg-primary)]/95 text-[var(--accent-ochre)] border border-[var(--accent-ochre)]/30' :
                                           'bg-[var(--bg-primary)]/95 text-[var(--accent-clay)] border border-[var(--accent-clay)]/30'
           }`}>
-            {story.status === 'ACTIVE'   && `✅ ${Math.ceil(story.hoursRemaining / 24)}d active`}
-            {story.status === 'EXPIRING' && `⚠️ ${story.hoursRemaining}h left`}
-            {story.status === 'EXPIRED'  && '💀 Decayed'}
+            {story.status === 'ACTIVE' && (
+              <>
+                <span className="w-2 h-2 rounded-full bg-[var(--accent-forest)] animate-pulse inline-block" />
+                <span>{Math.ceil(story.hoursRemaining / 24)}d active</span>
+              </>
+            )}
+            {story.status === 'EXPIRING' && (
+              <>
+                <svg className="w-3.5 h-3.5 text-[var(--accent-ochre)] shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <span>{story.hoursRemaining}h left</span>
+              </>
+            )}
+            {story.status === 'EXPIRED' && (
+              <>
+                <span className="w-2 h-2 rounded-full bg-[var(--accent-clay)] inline-block" />
+                <span>Decayed</span>
+              </>
+            )}
           </span>
         </div>
       </div>
@@ -115,34 +130,53 @@ export function StoryDetailView({ story, onBack, onTipClick, onLike, onNavigate 
             </div>
           </div>
 
-          <div className="flex items-center gap-2 sm:ml-6 flex-shrink-0">
+          <div className="flex items-center gap-2 sm:ml-6 flex-shrink-0 font-bold">
             {story.status !== 'EXPIRED' && (
               <button
-                className={`flex items-center gap-1.5 text-sm font-semibold px-3.5 py-2 rounded-xl border transition-all ${
+                className={`flex items-center gap-1.5 text-sm px-3.5 py-2 rounded-xl border transition-all ${
                   story.isLikedByUser
                     ? 'text-rose-600 border-rose-200 bg-rose-50'
                     : 'text-[var(--text-secondary)] border-[var(--border-strong)] hover:text-rose-600 hover:bg-rose-50/50'
                 }`}
                 onClick={() => onLike(story.id)}
               >
-                {story.isLikedByUser ? '❤️' : '🤍'} {story.likes.toLocaleString()}
+                {story.isLikedByUser ? (
+                  <svg className="w-4 h-4 text-rose-600 fill-current animate-heart-beat" viewBox="0 0 24 24">
+                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4 text-[var(--text-secondary)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                  </svg>
+                )}
+                <span>{story.likes.toLocaleString()}</span>
               </button>
             )}
             <button
               onClick={() => onTipClick(story)}
               className="btn-tip text-sm font-bold px-4 py-2 rounded-xl transition-all"
             >
-              {story.status === 'EXPIRED' ? '⚡ Resurrect' : '💸 Tip Author'}
+              {story.status === 'EXPIRED' ? 'Resurrect Storage' : 'Tip Author'}
             </button>
           </div>
         </div>
 
-        <div className="flex gap-4 mt-4 text-xs text-[var(--text-secondary)] flex-wrap">
-          <span className="text-[var(--accent-forest)] font-bold">💰 ${story.tipsUSDFC} tipped</span>
+        <div className="flex gap-4 mt-4 text-xs text-[var(--text-secondary)] flex-wrap items-center">
+          <span className="text-[var(--accent-forest)] font-bold flex items-center gap-1 bg-[var(--accent-forest)]/5 px-2 py-1 rounded-lg border border-[var(--accent-forest)]/10">
+            <span>$</span>
+            <span>{story.tipsUSDFC.toFixed(2)} Tipped</span>
+          </span>
           <span>· {story.tipsReceived} tips received</span>
           <span>· {story.likes.toLocaleString()} likes</span>
           <span>· {story.views.toLocaleString()} views</span>
-          {story.likes >= 10000 && <span className="text-[var(--accent-sage)] font-bold">🏆 Viral (5 FIL bonus earned!)</span>}
+          {story.likes >= 10000 && (
+            <span className="text-[var(--accent-sage)] font-bold flex items-center gap-1">
+              <svg className="w-3.5 h-3.5 text-[var(--accent-ochre)] shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 15a4 4 0 100-8 4 4 0 000 8zm0 0v6m-3 0h6M4 9h3v1H4V9zm13 0h3v1h-3V9z" />
+              </svg>
+              <span>Viral Bonus (5 FIL Earned)</span>
+            </span>
+          )}
         </div>
       </div>
 
@@ -170,18 +204,72 @@ export function StoryDetailView({ story, onBack, onTipClick, onLike, onNavigate 
 
       {/* Content */}
       {story.status === 'EXPIRED' ? (
-        <div className="rounded-2xl p-8 text-center border border-[var(--accent-clay)]/20 bg-[var(--accent-clay)]/5 shadow-sm">
-          <p className="text-5xl mb-4">💀</p>
-          <h3 className="text-xl font-bold font-serif text-[var(--accent-clay)] mb-2">This story has decayed</h3>
-          <p className="text-[var(--text-secondary)] text-sm mb-6 max-w-lg mx-auto leading-relaxed">
-            The community did not tip enough to keep this story's Filecoin storage deal active. The content has been removed from the decentralized network.
-          </p>
-          <button
-            onClick={() => onTipClick(story)}
-            className="px-6 py-3 rounded-xl font-bold text-white btn-primary transition-all"
-          >
-            ⚡ Resurrect with a Tip
-          </button>
+        <div className="rounded-2xl p-8 border border-[var(--accent-clay)]/20 bg-[var(--accent-clay)]/5 shadow-sm">
+          {/* Decay header */}
+          <div className="flex flex-col items-center text-center mb-6">
+            <div className="w-14 h-14 rounded-2xl bg-[var(--bg-secondary)] flex items-center justify-center mb-4 border border-[var(--border-strong)] text-[var(--accent-clay)]">
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
+              </svg>
+            </div>
+            <h3 className="text-xl font-bold font-serif text-[var(--accent-clay)] mb-2">This story has decayed from storage</h3>
+            <p className="text-[var(--text-secondary)] text-sm max-w-lg mx-auto leading-relaxed">
+              The community did not support this story enough to keep its Filecoin storage deal active. The content has been removed from the decentralized network.
+            </p>
+          </div>
+
+          {/* Resurrection explanation */}
+          <div className="rounded-xl p-4 border border-[var(--border-strong)] bg-[var(--bg-secondary)] mb-5">
+            <h4 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-3 flex items-center gap-2">
+              <svg className="w-4 h-4 text-[var(--accent-ochre)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              How to Resurrect This Story
+            </h4>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1 flex items-start gap-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-strong)]">
+                <span className="w-6 h-6 rounded-full bg-[var(--accent-forest)]/10 text-[var(--accent-forest)] text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                <div>
+                  <p className="text-xs font-bold text-[var(--text-primary)] mb-0.5">Readers tip the author</p>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">Send USDFC tips to support the author. 100% of tips go directly to their withdrawable balance.</p>
+                </div>
+              </div>
+              <div className="hidden sm:flex items-center text-[var(--text-muted)]">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+              <div className="flex-1 flex items-start gap-3 p-3 rounded-lg bg-[var(--bg-card)] border border-[var(--border-strong)]">
+                <span className="w-6 h-6 rounded-full bg-[var(--accent-forest)]/10 text-[var(--accent-forest)] text-[11px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                <div>
+                  <p className="text-xs font-bold text-[var(--text-primary)] mb-0.5">Author allocates balance to storage</p>
+                  <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">The author visits their profile, selects this story, and uses their earnings to open a new Filecoin storage lease. Minimum: 30 days for $3.00 USDFC.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* CTAs */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => onTipClick(story)}
+              className="px-6 py-3 rounded-xl font-bold text-sm text-white btn-primary transition-all shadow-sm flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+              </svg>
+              Tip the Author
+            </button>
+            <button
+              onClick={() => onNavigate('author', story.authorFull)}
+              className="px-6 py-3 rounded-xl font-bold text-sm border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)] bg-[var(--bg-card)] transition-all flex items-center justify-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              View Author&apos;s Profile
+            </button>
+          </div>
         </div>
       ) : (
         <div className="rounded-2xl p-6 sm:p-8 border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm mb-6">

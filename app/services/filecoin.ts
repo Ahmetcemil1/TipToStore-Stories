@@ -18,6 +18,7 @@ export const synapse = Synapse.create({
 });
 
 // Instantiate WarmStorageService using synapse client
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const warmStorage = new WarmStorageService({ client: synapse.client as any });
 
 /**
@@ -59,12 +60,14 @@ export async function uploadStoryToFilecoin(data: Uint8Array, title: string, aut
  */
 export async function tipAndRenewStorage(dataSetId: string, authorAddress: string, tipAmountUSDFC: number) {
   // 1. Create a payment rail for tipping (if not already existing)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const railId = await (synapse.payments as any).createRail({
     to: authorAddress as `0x${string}`,
     rate: 0.1, // Cost per epoch (example)
   });
 
   // 2. Reader tips via the rail
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (synapse.payments as any).topUpRail({ 
     railId, 
     amount: tipAmountUSDFC 
@@ -77,9 +80,10 @@ export async function tipAndRenewStorage(dataSetId: string, authorAddress: strin
   // 4. Calculate storage cost from tips
   let costPerDay = 0.1;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const storageCost = await (synapse.storage as any).getStorageCost(dataSetId);
     costPerDay = storageCost.costPerDay || 0.1;
-  } catch (e) {
+  } catch {
     // Fallback if SDK method doesn't exist in this version
   }
   const renewalDays = tipAmountUSDFC / costPerDay;
@@ -91,6 +95,7 @@ export async function tipAndRenewStorage(dataSetId: string, authorAddress: strin
   }
   const newEndEpoch = Number(currentDataSet.pdpEndEpoch) + (renewalDays * 2880); // 2880 epochs per day (30s each)
   
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (warmStorage as any).upsertDataSet(dataSetId, {
     endEpoch: newEndEpoch,
   });

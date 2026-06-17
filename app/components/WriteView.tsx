@@ -11,6 +11,8 @@ interface WriteViewProps {
   onPublish: (story: Story) => void;
   onNavigate: (page: Page, id?: string) => void;
   showToast: (msg: string, type?: 'success' | 'error' | 'info') => void;
+  session: { username: string; email: string; avatar: string; bio: string; walletAddress: string } | null;
+  stories: Story[];
 }
 
 interface ChapterInput {
@@ -36,8 +38,11 @@ function shortenAddr(addr?: string) {
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) {
+export function WriteView({ onPublish, onNavigate, showToast, session, stories }: WriteViewProps) {
   const { isConnected, address } = useAccount();
+
+  const authorFullAddress = session ? session.walletAddress : (address ?? '0x0000');
+  const isFirstStory = !stories.some(s => s.authorFull.toLowerCase() === authorFullAddress.toLowerCase());
 
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -126,7 +131,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
   };
 
   async function handlePublish() {
-    if (!isConnected) { showToast('Connect your wallet first!', 'error'); return; }
+    if (!isConnected && !session) { showToast('Connect your wallet or Sign In first!', 'error'); return; }
     if (!title.trim()) { showToast('Please add a book title', 'error'); return; }
 
     let finalChapters: ChapterInput[] = [];
@@ -138,7 +143,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
         return;
       }
       // If there's unsaved text in the current fields, auto-save
-      let currentChapters = [...chapters];
+      const currentChapters = [...chapters];
       if (chapContent.trim()) {
         const finalTitle = chapTitle.trim() || `Chapter ${chapters.length + 1}`;
         currentChapters.push({ title: finalTitle, content: chapContent.trim() });
@@ -155,25 +160,31 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
     }
 
     setIsUploading(true);
-    showToast('📡 Pinning dataset to IPFS & opening Filecoin deal…', 'info');
+    showToast('Pinning dataset to IPFS & opening Filecoin deal…', 'info');
 
     // Simulate upload
     await new Promise(r => setTimeout(r, 2500));
 
     const fakeCID = `bafybei${Math.random().toString(36).slice(2,20)}${Math.random().toString(36).slice(2,18)}`;
 
+    const authorName = session ? session.username : shortenAddr(address);
+    const authorAvatarStr = session ? session.avatar : '✍️';
+    const authorBioStr = session ? session.bio : 'TipToStore author';
+
+    const initialHours = isFirstStory ? 720 : 168;
+
     const newStory: Story = {
       id: `story-${Date.now()}`,
       title: title.trim(),
       content: finalContent,
       coverImage: coverPreview ?? selectedGradient,
-      author: shortenAddr(address),
-      authorFull: address ?? '0x0000',
-      authorAvatar: '✍️',
-      authorBio: 'TipToStore author',
+      author: authorName,
+      authorFull: authorFullAddress,
+      authorAvatar: authorAvatarStr,
+      authorBio: authorBioStr,
       status: 'ACTIVE',
-      hoursRemaining: 168,
-      maxHours: 168,
+      hoursRemaining: initialHours,
+      maxHours: initialHours,
       likes: 0,
       views: 1,
       tipsReceived: 0,
@@ -188,12 +199,12 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
 
     setIsUploading(false);
     onPublish(newStory);
-    showToast('🎉 Book published! Filecoin storage deal successfully created.', 'success');
+    showToast('Book published! Filecoin storage deal successfully created.', 'success');
     onNavigate('story', newStory.id);
   }
 
   // Conditions for publishing button
-  const canPublish = isConnected && title.trim().length > 0 && totalWordCount >= 5 && !isUploading;
+  const canPublish = (isConnected || !!session) && title.trim().length > 0 && totalWordCount >= 5 && !isUploading;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
@@ -202,11 +213,30 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
         <p className="text-[var(--text-secondary)] text-sm">Your work will be pinned to IPFS and registered as a Filecoin dataset. Tips extend its storage lease dynamically.</p>
       </div>
 
-      {!isConnected && (
+      {!isConnected && !session && (
         <div className="rounded-2xl p-6 mb-8 border border-[var(--accent-ochre)]/20 text-center bg-[var(--accent-ochre)]/5">
-          <p className="text-[var(--accent-ochre)] font-bold mb-3 text-sm">Connect your Web3 Wallet in the top right to enable publishing</p>
+          <p className="text-[var(--accent-ochre)] font-bold mb-3 text-sm">Connect your Web3 Wallet or Sign In to enable publishing</p>
           <div className="inline-block">
             <ConnectButton />
+          </div>
+        </div>
+      )}
+
+      {!isConnected && session && (
+        <div className="rounded-2xl p-5 mb-8 border border-[var(--border-strong)] bg-[var(--bg-secondary)] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+          <div className="flex-1">
+            <p className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1">
+              <svg className="w-3.5 h-3.5 text-[var(--accent-ochre)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 113.536 0V21h2v-2.243a5 5 0 013.536 0z" />
+              </svg>
+              <span>Off-chain Sandbox Mode</span>
+            </p>
+            <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed mt-0.5">
+              You are signed in as <strong className="text-[var(--accent-forest)]">{session.username}</strong>. You can publish using sandbox credentials. Connect your Web3 wallet in the header for real-world Filecoin testnet deals.
+            </p>
+          </div>
+          <div className="inline-block shrink-0">
+            <ConnectButton label="Link Web3 Wallet" />
           </div>
         </div>
       )}
@@ -217,20 +247,20 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
           <p className="text-sm font-bold text-[var(--text-primary)]">Select Format Type</p>
           <p className="text-xs text-[var(--text-secondary)]">Choose whether you are publishing a short story or a multi-page book/novel.</p>
         </div>
-        <div className="flex gap-2 bg-[var(--bg-card)] p-1 rounded-xl border border-[var(--border-strong)] w-full sm:w-auto">
+        <div className="flex gap-2 bg-[var(--bg-card)] p-1 rounded-xl border border-[var(--border-strong)] w-full sm:w-auto font-semibold">
           <button
             type="button"
             onClick={() => setIsMultiChapter(false)}
             className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition-all ${!isMultiChapter ? 'bg-[var(--accent-forest)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
           >
-            📄 Short Story (Single Page)
+            Short Story (Single Page)
           </button>
           <button
             type="button"
             onClick={() => setIsMultiChapter(true)}
             className={`flex-1 sm:flex-initial px-4 py-2 rounded-lg text-xs font-bold transition-all ${isMultiChapter ? 'bg-[var(--accent-forest)] text-white' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
           >
-            📚 Book / Novel (Multi-Chapter)
+            Book / Novel (Multi-Chapter)
           </button>
         </div>
       </div>
@@ -254,6 +284,23 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
 
       {step === 'write' ? (
         <div className="space-y-6">
+          {/* First Story Free storage lease notice */}
+          {isFirstStory && (
+            <div className="rounded-2xl p-4 border border-[var(--border-subtle)] bg-[var(--bg-secondary)] flex items-start gap-3.5 animate-fade-in-up">
+              <div className="w-10 h-10 rounded-xl bg-[var(--accent-forest)]/10 flex items-center justify-center text-[var(--accent-forest)] flex-shrink-0">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l-.707-.707M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h4 className="text-sm font-bold text-[var(--text-primary)] mb-0.5">✨ First Story Free Month Bonus!</h4>
+                <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-medium">
+                  As a new writer, your first story will automatically receive a <strong>30-day (720 hours) free Filecoin storage deal lease</strong>. Subsequent stories will start with a 7-day lease.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Cover design */}
           <div>
             <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Cover Design</label>
@@ -446,8 +493,8 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
           <div className="flex flex-col gap-2 mt-2 p-3.5 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-secondary)] shadow-sm">
             <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Publish Checklist</p>
             <div className="space-y-1">
-              <p className={`text-xs flex items-center gap-1.5 font-semibold ${isConnected ? 'text-[var(--accent-forest)]' : 'text-[var(--accent-ochre)]'}`}>
-                {isConnected ? '✓ Wallet Connected' : '✗ Wallet Disconnected (Connect Web3 wallet at top)'}
+              <p className={`text-xs flex items-center gap-1.5 font-semibold ${(isConnected || !!session) ? 'text-[var(--accent-forest)]' : 'text-[var(--accent-ochre)]'}`}>
+                {(isConnected || !!session) ? '✓ Account or Wallet Authorized' : '✗ Authorization Required (Connect wallet or Sign In)'}
               </p>
               <p className={`text-xs flex items-center gap-1.5 font-semibold ${title.trim().length > 0 ? 'text-[var(--accent-forest)]' : 'text-[var(--text-muted)]'}`}>
                 {title.trim().length > 0 ? '✓ Book/Story Title Filled' : '✗ Book/Story Title Missing'}
