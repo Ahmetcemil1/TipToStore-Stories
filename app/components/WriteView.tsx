@@ -137,7 +137,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
         showToast('Please add at least one chapter.', 'error');
         return;
       }
-      // If there's unsaved text in the current fields, auto-save or warn
+      // If there's unsaved text in the current fields, auto-save
       let currentChapters = [...chapters];
       if (chapContent.trim()) {
         const finalTitle = chapTitle.trim() || `Chapter ${chapters.length + 1}`;
@@ -146,8 +146,8 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
       finalChapters = currentChapters;
       finalContent = finalChapters.map(c => `## ${c.title}\n\n${c.content}`).join('\n\n');
     } else {
-      if (getWordCount(singleContent) < 30) {
-        showToast('Story must be at least 30 words', 'error');
+      if (getWordCount(singleContent) < 5) {
+        showToast('Story must be at least 5 words', 'error');
         return;
       }
       finalChapters = [{ title: 'Chapter 1', content: singleContent.trim() }];
@@ -192,16 +192,19 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
     onNavigate('story', newStory.id);
   }
 
+  // Conditions for publishing button
+  const canPublish = isConnected && title.trim().length > 0 && totalWordCount >= 5 && !isUploading;
+
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold font-serif text-[var(--text-primary)] mb-2">✍️ Publish a Story or Book</h1>
+        <h1 className="text-3xl font-bold font-serif text-[var(--text-primary)] mb-2">Publish a Story or Book</h1>
         <p className="text-[var(--text-secondary)] text-sm">Your work will be pinned to IPFS and registered as a Filecoin dataset. Tips extend its storage lease dynamically.</p>
       </div>
 
       {!isConnected && (
         <div className="rounded-2xl p-6 mb-8 border border-[var(--accent-ochre)]/20 text-center bg-[var(--accent-ochre)]/5">
-          <p className="text-[var(--accent-ochre)] font-bold mb-3 text-sm">Connect your wallet to publish</p>
+          <p className="text-[var(--accent-ochre)] font-bold mb-3 text-sm">Connect your Web3 Wallet in the top right to enable publishing</p>
           <div className="inline-block">
             <ConnectButton />
           </div>
@@ -244,7 +247,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
                 : 'border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)]'
             }`}
           >
-            {s === 'write' ? '📝 Write' : '👁️ Preview'}
+            {s === 'write' ? 'Write' : 'Preview'}
           </button>
         ))}
       </div>
@@ -268,12 +271,12 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
               <button
                 onClick={() => fileRef.current?.click()}
-                className="px-4 py-2 text-sm rounded-xl border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-all bg-[var(--bg-card)]"
+                className="px-4 py-2 text-sm rounded-xl border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-black/30 bg-[var(--bg-card)] transition-all"
               >
-                📷 Upload custom image (max 5MB)
+                Upload custom image (max 5MB)
               </button>
               {coverPreview && (
-                <button onClick={() => setCoverPreview(null)} className="text-xs text-[var(--accent-clay)] hover:underline">✕ Remove</button>
+                <button onClick={() => setCoverPreview(null)} className="text-xs text-[var(--accent-clay)] hover:underline">Remove</button>
               )}
             </div>
             {/* Preview */}
@@ -315,7 +318,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
               {/* Saved chapters list */}
               {chapters.length > 0 && (
                 <div className="border border-[var(--border-strong)] rounded-xl bg-[var(--bg-secondary)] p-4 space-y-2.5">
-                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Saved Chapters</p>
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider font-serif">Saved Chapters</p>
                   <div className="space-y-2">
                     {chapters.map((ch, i) => (
                       <div key={i} className="flex justify-between items-center bg-[var(--bg-card)] border border-[var(--border-strong)] p-3 rounded-lg text-sm shadow-sm">
@@ -349,7 +352,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
               {/* Add/Edit chapter form */}
               <div className="border border-[var(--border-subtle)] rounded-xl p-4 bg-[var(--bg-card)] space-y-3 shadow-sm">
                 <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-                  {editingIndex !== null ? `✏️ Edit Chapter ${editingIndex + 1}` : `➕ Add Chapter / Page ${chapters.length + 1}`}
+                  {editingIndex !== null ? `Edit Chapter ${editingIndex + 1}` : `Add Chapter / Page ${chapters.length + 1}`}
                 </p>
                 <input
                   type="text"
@@ -372,7 +375,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
                       onClick={() => { setEditingIndex(null); setChapTitle(''); setChapContent(''); }}
                       className="px-4 py-2 rounded-lg text-xs font-semibold border border-[var(--border-strong)] text-[var(--text-secondary)] hover:bg-black/5 transition-all"
                     >
-                      Cancel Edit
+                      Cancel
                     </button>
                   )}
                   <button
@@ -404,7 +407,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
 
           {/* Value Highlight info box */}
           <div className="rounded-xl px-4 py-3 mt-4 border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] bg-[var(--bg-secondary)] leading-relaxed">
-            💡 <strong>Filecoin Dataset Capacity:</strong> Whether you write a short 1-page article or compile a 400-page historical novel with 99 chapters, the system packages your content into a secure, encrypted folder structure. Decentalized Filecoin providers store the entire metadata set. Larger works add real, meaningful transaction size to the Filecoin ecosystem.
+            <strong>Filecoin Dataset Capacity:</strong> Whether you write a short 1-page article or compile a 400-page historical novel with 99 chapters, the system packages your content into a secure, encrypted folder structure. Decentalized Filecoin providers store the entire metadata set. Larger works add real, meaningful transaction size to the Filecoin ecosystem.
           </div>
 
           {/* Tags */}
@@ -439,17 +442,33 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
             </div>
           </div>
 
+          {/* Validation Feedback Box */}
+          <div className="flex flex-col gap-2 mt-2 p-3.5 rounded-xl border border-[var(--border-strong)] bg-[var(--bg-secondary)] shadow-sm">
+            <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Publish Checklist</p>
+            <div className="space-y-1">
+              <p className={`text-xs flex items-center gap-1.5 font-semibold ${isConnected ? 'text-[var(--accent-forest)]' : 'text-[var(--accent-ochre)]'}`}>
+                {isConnected ? '✓ Wallet Connected' : '✗ Wallet Disconnected (Connect Web3 wallet at top)'}
+              </p>
+              <p className={`text-xs flex items-center gap-1.5 font-semibold ${title.trim().length > 0 ? 'text-[var(--accent-forest)]' : 'text-[var(--text-muted)]'}`}>
+                {title.trim().length > 0 ? '✓ Book/Story Title Filled' : '✗ Book/Story Title Missing'}
+              </p>
+              <p className={`text-xs flex items-center gap-1.5 font-semibold ${totalWordCount >= 5 ? 'text-[var(--accent-forest)]' : 'text-[var(--accent-clay)]'}`}>
+                {totalWordCount >= 5 ? `✓ Word count requirement met (${totalWordCount}/5 words)` : `✗ Content is too short. Minimum 5 words required (currently: ${totalWordCount} words)`}
+              </p>
+            </div>
+          </div>
+
           {/* Actions */}
           <div className="flex gap-3 pt-2">
             <button
               onClick={() => setStep('preview')}
               className="flex-1 py-3 rounded-xl font-semibold text-sm border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 bg-[var(--bg-card)] transition-all"
             >
-              👁 Preview
+              Preview
             </button>
             <button
               onClick={handlePublish}
-              disabled={!isConnected || isUploading || !title.trim() || totalWordCount < 30}
+              disabled={!canPublish}
               className="flex-2 px-8 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed btn-primary"
               style={{ flex: 2 }}
             >
@@ -462,7 +481,7 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
                   Uploading to Filecoin…
                 </span>
               ) : (
-                isMultiChapter ? '🚀 Publish Book to Filecoin' : '🚀 Publish Story to Filecoin'
+                isMultiChapter ? 'Publish Book to Filecoin' : 'Publish Story to Filecoin'
               )}
             </button>
           </div>
@@ -516,11 +535,11 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
             </button>
             <button
               onClick={handlePublish}
-              disabled={!isConnected || isUploading || !title.trim() || totalWordCount < 30}
+              disabled={!canPublish}
               className="flex-2 px-8 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed btn-primary"
               style={{ flex: 2 }}
             >
-              {isUploading ? 'Uploading…' : '🚀 Publish to Filecoin'}
+              {isUploading ? 'Uploading…' : 'Publish to Filecoin'}
             </button>
           </div>
         </div>
