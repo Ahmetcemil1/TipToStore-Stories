@@ -14,6 +14,7 @@ import { AboutView }       from './components/AboutView';
 import { WriteView }       from './components/WriteView';
 import { StoryDetailView } from './components/StoryDetailView';
 import { AuthorView }      from './components/AuthorView';
+import { AuthModal }       from './components/AuthModal';
 
 // Data & Types
 import { SEED_STORIES, TIP_HISTORY_SEED } from './lib/data';
@@ -27,6 +28,14 @@ type Page = 'home' | 'about' | 'write' | 'story' | 'author';
 interface NavState {
   page: Page;
   id?: string;   // storyId or authorAddress
+}
+
+interface LoggedInUser {
+  username: string;
+  email: string;
+  avatar: string;
+  bio: string;
+  walletAddress: string;
 }
 
 // ─────────────────────────────────────
@@ -88,21 +97,20 @@ function HomeFeed({
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12">
       {/* Stats */}
       <StatsBar stories={stories} />
 
       {/* Explainer */}
-      <div className="rounded-2xl p-5 mb-8 border border-white/5 relative overflow-hidden" style={{background:'rgba(8,15,28,0.85)'}}>
-        <div className="absolute inset-0 pointer-events-none" style={{background:'linear-gradient(135deg,rgba(16,185,129,0.04),transparent 60%)'}} />
-        <div className="relative flex flex-col sm:flex-row gap-5 items-start">
+      <div className="rounded-2xl p-5 mb-8 border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm relative overflow-hidden">
+        <div className="relative flex flex-col md:flex-row gap-5 items-start">
           <div className="flex-1">
-            <h2 className="font-bold text-white mb-1.5 text-base">💡 How TipToStore Works</h2>
-            <p className="text-sm text-slate-400 leading-relaxed">
-              Every story is stored as a <strong className="text-white">Filecoin dataset</strong> via the Synapse SDK. Stories are <strong className="text-emerald-400">free to read</strong> — but storage isn't free. Readers tip authors in <strong className="text-emerald-400">USDFC</strong>. Each dollar of tips extends the story's storage lease. Popular stories survive. Ignored ones <em className="text-red-400">decay</em>.
+            <h2 className="font-bold font-serif text-[var(--text-primary)] mb-2 text-base">💡 How TipToStore Works</h2>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+              Every story is stored as a <strong className="text-[var(--text-primary)]">Filecoin dataset</strong> via the Synapse SDK. Stories are <strong className="text-[var(--accent-forest)]">free to read</strong> — but decentralized storage isn't free. Readers tip authors in <strong className="text-[var(--accent-forest)]">USDFC</strong>. Each dollar of tips extends the story's storage lease on Filecoin. Popular stories survive. Ignored ones <em className="text-[var(--accent-clay)]">decay</em>.
             </p>
           </div>
-          <div className="flex flex-col gap-1.5 text-xs text-slate-500 shrink-0">
+          <div className="flex flex-col gap-1.5 text-xs text-[var(--text-secondary)] shrink-0 font-medium bg-[var(--bg-secondary)] p-3 rounded-xl border border-[var(--border-strong)]">
             {['📤 Write & pin to IPFS', '⛓️ Filecoin deal opens', '💸 Readers tip USDFC', '♾️ Storage renews or decays'].map(s => (
               <div key={s} className="flex items-center gap-1.5">{s.split(' ')[0]} <span>{s.slice(2)}</span></div>
             ))}
@@ -123,10 +131,9 @@ function HomeFeed({
                   onClick={() => setFilter(tab.id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
                     filter === tab.id
-                      ? 'border-emerald-500/30 text-emerald-300'
-                      : 'border-white/7 text-slate-500 hover:text-white hover:border-white/15'
+                      ? 'bg-[var(--accent-forest)]/10 border-[var(--accent-forest)]/30 text-[var(--accent-forest)] font-bold'
+                      : 'border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                   }`}
-                  style={{ background: filter === tab.id ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)' }}
                 >
                   {tab.label}
                 </button>
@@ -137,36 +144,36 @@ function HomeFeed({
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="🔍 Search stories…"
-              className="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-xl border border-white/7 text-slate-300 placeholder-slate-600 focus:outline-none focus:border-emerald-500/30 transition-all"
-              style={{ background: 'rgba(2,8,16,0.7)' }}
+              className="flex-1 min-w-0 px-3 py-1.5 text-sm rounded-xl border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-card)]"
             />
           </div>
 
           {/* Sort */}
           <div className="flex items-center gap-2 mb-5">
-            <span className="text-xs text-slate-600">Sort:</span>
+            <span className="text-xs text-[var(--text-muted)] font-medium">Sort:</span>
             {sortOptions.map(o => (
               <button
                 key={o.id}
                 onClick={() => setSort(o.id)}
-                className={`text-xs font-medium px-2.5 py-1 rounded-lg transition-all ${
-                  sort === o.id ? 'text-white' : 'text-slate-600 hover:text-slate-400'
+                className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition-all ${
+                  sort === o.id
+                    ? 'bg-[var(--accent-forest)]/10 text-[var(--accent-forest)]'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
-                style={{ background: sort === o.id ? 'rgba(255,255,255,0.08)' : 'transparent' }}
               >
                 {o.label}
               </button>
             ))}
-            <span className="ml-auto text-xs text-slate-600">{filtered.length} stories</span>
+            <span className="ml-auto text-xs text-[var(--text-muted)] font-medium">{filtered.length} stories</span>
           </div>
 
           {/* Story list */}
-          <div className="space-y-5">
+          <div className="space-y-6">
             {filtered.length === 0 ? (
-              <div className="rounded-2xl p-12 text-center border border-white/5" style={{background:'rgba(8,15,28,0.6)'}}>
-                <p className="text-5xl mb-3">🔍</p>
-                <p className="text-slate-400 font-medium">No stories found</p>
-                <p className="text-slate-600 text-sm mt-1">Try a different filter or search term</p>
+              <div className="rounded-2xl p-12 text-center border border-[var(--border-strong)] bg-[var(--bg-card)] shadow-sm">
+                <p className="text-5xl mb-3 animate-pulse">🔍</p>
+                <p className="text-[var(--text-primary)] font-bold font-serif text-lg">No stories found</p>
+                <p className="text-[var(--text-secondary)] text-sm mt-1">Try a different filter or search term</p>
               </div>
             ) : (
               filtered.map((s, i) => (
@@ -184,10 +191,10 @@ function HomeFeed({
         </div>
 
         {/* Sidebar */}
-        <aside className="lg:col-span-4 space-y-5">
+        <aside className="lg:col-span-4 space-y-6">
           {/* Tip economics */}
-          <div className="rounded-2xl p-5 border border-white/5 sticky top-20" style={{background:'rgba(8,15,28,0.85)'}}>
-            <h3 className="text-sm font-bold text-white mb-4">⚡ Tip Economics</h3>
+          <div className="rounded-2xl p-5 border border-[var(--border-strong)] bg-[var(--bg-card)] shadow-sm sticky top-20">
+            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-4">⚡ Storage Extension Rules</h3>
             <div className="space-y-2.5">
               {[
                 { amount: '$1',  result: '+24h storage' },
@@ -195,29 +202,29 @@ function HomeFeed({
                 { amount: '$10', result: '+10 days storage' },
                 { amount: '$25', result: '+25 days storage' },
               ].map(r => (
-                <div key={r.amount} className="flex justify-between items-center text-xs py-1.5 border-b border-white/5 last:border-0">
-                  <span className="text-emerald-400 font-semibold">{r.amount} USDFC</span>
-                  <span className="text-slate-500">{r.result}</span>
+                <div key={r.amount} className="flex justify-between items-center text-xs py-2 border-b border-black/5 last:border-0 font-medium">
+                  <span className="text-[var(--accent-forest)] font-bold">{r.amount} USDFC</span>
+                  <span className="text-[var(--text-secondary)]">{r.result}</span>
                 </div>
               ))}
             </div>
-            <div className="mt-4 p-3 rounded-xl border border-white/5 text-xs text-slate-500 leading-relaxed" style={{background:'rgba(2,8,16,0.5)'}}>
-              Tips go <strong className="text-white">directly to the author</strong>. The protocol calculates storage cost and auto-extends the Filecoin deal duration.
+            <div className="mt-4 p-3 rounded-xl border border-[var(--border-strong)] text-xs text-[var(--text-secondary)] leading-relaxed bg-[var(--bg-secondary)]">
+              Tips go <strong>directly to the author</strong>. The protocol calculates storage cost and auto-extends the Filecoin deal duration.
             </div>
           </div>
 
           {/* Viral reward */}
-          <div className="rounded-2xl p-5 border border-violet-500/15" style={{background:'rgba(139,92,246,0.06)'}}>
-            <h3 className="text-sm font-bold text-violet-300 mb-2">🏆 Viral Reward Program</h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Stories crossing <strong className="text-white">10,000 likes</strong> trigger a <strong className="text-violet-300">5 FIL</strong> bonus payout to the author from the network incentive pool.
+          <div className="rounded-2xl p-5 border border-[var(--border-subtle)] bg-[var(--bg-secondary)] shadow-sm">
+            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-2">🏆 Viral Reward Program</h3>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Stories crossing <strong className="text-[var(--text-primary)]">10,000 likes</strong> trigger a <strong className="text-[var(--accent-forest)] font-bold">5 FIL</strong> bonus payout to the author from the network incentive pool.
             </p>
           </div>
 
           {/* Network info */}
-          <div className="rounded-2xl p-5 border border-white/5" style={{background:'rgba(8,15,28,0.7)'}}>
-            <h3 className="text-sm font-bold text-white mb-3">🌐 Network</h3>
-            <div className="space-y-2">
+          <div className="rounded-2xl p-5 border border-[var(--border-strong)] bg-[var(--bg-card)] shadow-sm">
+            <h3 className="text-sm font-bold font-serif text-[var(--text-primary)] mb-3">🌐 Network Settings</h3>
+            <div className="space-y-2.5">
               {[
                 { k: 'Network',      v: 'Filecoin Calibration' },
                 { k: 'Token',        v: 'USDFC (FRC-46)' },
@@ -225,9 +232,9 @@ function HomeFeed({
                 { k: 'Epoch time',   v: '~30 seconds' },
                 { k: 'Proof system', v: 'PDP (PoRep)' },
               ].map(n => (
-                <div key={n.k} className="flex justify-between text-xs">
-                  <span className="text-slate-600">{n.k}</span>
-                  <span className="text-slate-300 font-medium">{n.v}</span>
+                <div key={n.k} className="flex justify-between text-xs font-medium border-b border-black/5 last:border-0 pb-1.5 last:pb-0">
+                  <span className="text-[var(--text-muted)]">{n.k}</span>
+                  <span className="text-[var(--text-secondary)] font-semibold">{n.v}</span>
                 </div>
               ))}
             </div>
@@ -250,6 +257,18 @@ export default function App() {
   const [tipStory,   setTipStory]   = useState<Story | null>(null);
   const [toast,      setToast]      = useState<{ msg: string; type: 'success'|'error'|'info' } | null>(null);
 
+  // Authentication State
+  const [session, setSession] = useState<LoggedInUser | null>(null);
+  const [authOpen, setAuthOpen] = useState(false);
+
+  // Load session from localStorage
+  useEffect(() => {
+    const activeSession = localStorage.getItem('tiptostore_session');
+    if (activeSession) {
+      setSession(JSON.parse(activeSession));
+    }
+  }, []);
+
   function showToast(msg: string, type: 'success'|'error'|'info' = 'success') {
     setToast({ msg, type });
   }
@@ -258,6 +277,19 @@ export default function App() {
     setNav({ page, id });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
+
+  // Handle Login Success
+  const handleLoginSuccess = (user: LoggedInUser) => {
+    setSession(user);
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    localStorage.removeItem('tiptostore_session');
+    setSession(null);
+    showToast('Signed out successfully.', 'info');
+    navigate('home');
+  };
 
   // Simulated decay clock (1 tick = 1 hour for demo; real = epoch-based)
   useEffect(() => {
@@ -278,7 +310,10 @@ export default function App() {
   }, []);
 
   function handleLike(id: string) {
-    if (!isConnected) { showToast('Connect your wallet to like stories.', 'error'); return; }
+    if (!isConnected && !session) {
+      showToast('Please Sign In or Connect Wallet to like stories.', 'error');
+      return;
+    }
     setStories(prev =>
       prev.map(s => {
         if (s.id !== id) return s;
@@ -320,6 +355,13 @@ export default function App() {
   }
 
   function handlePublish(story: Story) {
+    // Override author info with real session if logged in
+    if (session) {
+      story.author = session.username;
+      story.authorFull = session.walletAddress;
+      story.authorAvatar = session.avatar;
+      story.authorBio = session.bio;
+    }
     setStories(prev => [story, ...prev]);
   }
 
@@ -328,7 +370,7 @@ export default function App() {
   const authorAddress = nav.id ?? '';
 
   return (
-    <div className="min-h-screen bg-mesh">
+    <div className="min-h-screen bg-[var(--bg-primary)]">
       {/* Toast */}
       {toast && (
         <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />
@@ -343,8 +385,23 @@ export default function App() {
         />
       )}
 
+      {/* Auth Modal */}
+      {authOpen && (
+        <AuthModal
+          onClose={() => setAuthOpen(false)}
+          onLoginSuccess={handleLoginSuccess}
+          showToast={showToast}
+        />
+      )}
+
       {/* Navbar */}
-      <Navbar currentPage={nav.page} onNavigate={navigate} />
+      <Navbar
+        currentPage={nav.page}
+        onNavigate={navigate}
+        session={session}
+        onAuthClick={() => setAuthOpen(true)}
+        onLogout={handleLogout}
+      />
 
       {/* Page router */}
       <main>
@@ -382,8 +439,8 @@ export default function App() {
         {nav.page === 'story' && !currentStory && (
           <div className="max-w-3xl mx-auto px-6 py-20 text-center">
             <p className="text-6xl mb-4">🔍</p>
-            <p className="text-slate-400 font-semibold text-lg">Story not found</p>
-            <button onClick={() => navigate('home')} className="mt-5 text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+            <p className="text-[var(--text-secondary)] font-bold text-lg">Story not found</p>
+            <button onClick={() => navigate('home')} className="mt-5 text-sm text-[var(--accent-forest)] hover:underline transition-colors font-bold">
               ← Back to stories
             </button>
           </div>
@@ -401,8 +458,8 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 mt-20 py-8">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-slate-700">
+      <footer className="border-t border-[var(--border-strong)] mt-20 py-8 bg-[var(--bg-secondary)]">
+        <div className="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-xs text-[var(--text-muted)] font-medium">
           <div className="flex items-center gap-2">
             <span>📚</span>
             <span>TipToStore Stories</span>
@@ -412,9 +469,9 @@ export default function App() {
           <div className="flex items-center gap-3">
             <span>Filecoin + Synapse SDK</span>
             <span>·</span>
-            <button onClick={() => navigate('about')} className="hover:text-slate-400 transition-colors">About</button>
+            <button onClick={() => navigate('about')} className="hover:text-[var(--text-primary)] transition-colors">About</button>
             <span>·</span>
-            <button onClick={() => navigate('write')} className="hover:text-slate-400 transition-colors">Publish</button>
+            <button onClick={() => navigate('write')} className="hover:text-[var(--text-primary)] transition-colors">Publish</button>
           </div>
         </div>
       </footer>

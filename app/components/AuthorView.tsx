@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { Story, TipRecord } from '../types';
 
 type Page = 'home' | 'about' | 'write' | 'story' | 'author';
@@ -23,103 +24,180 @@ function storagePercent(hours: number, max: number) {
 }
 
 export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClick }: AuthorViewProps) {
+  const [profile, setProfile] = useState<{ username: string; email: string; avatar: string; bio: string; walletAddress: string } | null>(null);
+
+  useEffect(() => {
+    // 1. Check if the address belongs to the active session
+    const sessionRaw = localStorage.getItem('tiptostore_session');
+    if (sessionRaw) {
+      const session = JSON.parse(sessionRaw);
+      if (session.walletAddress.toLowerCase() === address.toLowerCase()) {
+        setProfile(session);
+        return;
+      }
+    }
+
+    // 2. Check in all registered users
+    const usersRaw = localStorage.getItem('tiptostore_users');
+    if (usersRaw) {
+      const users = JSON.parse(usersRaw);
+      const found = users.find((u: any) => u.walletAddress.toLowerCase() === address.toLowerCase());
+      if (found) {
+        setProfile(found);
+        return;
+      }
+    }
+
+    // 3. Fallback for seed stories
+    const seedAuthors: Record<string, { username: string; avatar: string; bio: string }> = {
+      '0xalicef4b2e8a1d3c2b9e7f6a5d4c3b2a1e9f8d7c6': {
+        username: 'Alice (Arctic Archivist)',
+        avatar: '🧊',
+        bio: 'Arctic data archivist. Keeping the record alive one epoch at a time.'
+      },
+      '0xarchivist99e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6': {
+        username: 'Archivist of Neo-Istanbul',
+        avatar: '🎵',
+        bio: 'Digitizing the cultural memory of Neo-Istanbul, one vinyl at a time.'
+      },
+      '0xdeepnode22d2a1b2c3d4e5f6a7b8c9d0e1f2a3b4': {
+        username: 'Mariana Deep Node Operator',
+        avatar: '🌊',
+        bio: 'Operator of the Mariana Deep Archive. 4000m below the surface, keeping data alive.'
+      },
+      '0xbob99a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7': {
+        username: 'Bob (Protocol Philosopher)',
+        avatar: '📡',
+        bio: 'Protocol philosopher. Writing about the permanence of decentralized data.'
+      },
+      '0xpoet33b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8': {
+        username: 'Poet (Code Philosopher)',
+        avatar: '🖊️',
+        bio: 'Writing at the intersection of code, poetry, and permanence.'
+      }
+    };
+
+    const key = address.toLowerCase();
+    if (seedAuthors[key]) {
+      setProfile({
+        username: seedAuthors[key].username,
+        email: '',
+        avatar: seedAuthors[key].avatar,
+        bio: seedAuthors[key].bio,
+        walletAddress: address
+      });
+    } else {
+      // Generic guest profile
+      setProfile({
+        username: `Author ${address.slice(0, 6)}`,
+        email: '',
+        avatar: '👤',
+        bio: 'TipToStore user profile.',
+        walletAddress: address
+      });
+    }
+  }, [address]);
+
   // Find stories by this author
   const authorStories = stories.filter(
-    s => s.authorFull === address || s.author.toLowerCase() === address.toLowerCase()
+    s => s.authorFull.toLowerCase() === address.toLowerCase() || s.author.toLowerCase() === address.toLowerCase()
   );
-  const firstStory = authorStories[0];
 
   const totalTips = authorStories.reduce((a, s) => a + s.tipsUSDFC, 0);
   const totalLikes = authorStories.reduce((a, s) => a + s.likes, 0);
   const totalViews = authorStories.reduce((a, s) => a + s.views, 0);
   const activeStories = authorStories.filter(s => s.status === 'ACTIVE').length;
 
-  // Tips given by this address (demo: all tip history)
-  const givenTips = tipHistory;
+  // Render tipping history for this profile only if tips are logged
+  const givenTips = tipHistory.filter(t => {
+    // If it's a seed story author, show relevant seeds, else show empty or filter by tx address if recorded
+    return true; // For demo purposes, we show the tipping feed
+  });
 
-  const avatar = firstStory?.authorAvatar ?? '👤';
-  const bio = firstStory?.authorBio ?? 'TipToStore author';
+  if (!profile) {
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+        <p className="text-slate-500 font-medium">Loading profile...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
+    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
       {/* Back */}
       <button
         onClick={() => onNavigate('home')}
-        className="flex items-center gap-2 text-slate-500 hover:text-white text-sm mb-8 transition-colors group"
+        className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] text-sm mb-8 transition-colors group"
       >
         <span className="group-hover:-translate-x-1 transition-transform">←</span>
         Back to Stories
       </button>
 
       {/* Profile header */}
-      <div className="rounded-2xl p-6 mb-8 border border-white/5 relative overflow-hidden" style={{background:'rgba(8,15,28,0.9)'}}>
-        <div className="absolute inset-0 pointer-events-none" style={{background:'radial-gradient(ellipse 60% 50% at 0% 0%,rgba(16,185,129,0.05),transparent)'}}>
-        </div>
+      <div className="rounded-2xl p-6 mb-8 border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm relative overflow-hidden">
         <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
-          <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl border border-white/10 flex-shrink-0" style={{background:'rgba(255,255,255,0.04)'}}>
-            {avatar}
+          <div className="w-20 h-20 rounded-2xl flex items-center justify-center text-4xl border border-[var(--border-strong)] bg-[var(--bg-secondary)] flex-shrink-0">
+            {profile.avatar}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-xl font-black text-white mb-1">
-              {shortenAddr(address)}
+            <h1 className="text-xl font-bold font-serif text-[var(--text-primary)] mb-1">
+              {profile.username}
             </h1>
-            <p className="text-sm text-slate-400 mb-2">{bio}</p>
-            <div className="flex items-center gap-2 text-xs">
-              <span className="px-2 py-1 rounded-lg border border-emerald-500/20 text-emerald-400" style={{background:'rgba(16,185,129,0.08)'}}>
+            <p className="text-sm text-[var(--text-secondary)] mb-3">{profile.bio}</p>
+            <div className="flex items-center gap-3 text-xs flex-wrap">
+              <span className="px-2.5 py-1 rounded-lg border border-[var(--accent-forest)]/20 text-[var(--accent-forest)] bg-[var(--accent-forest)]/5 font-semibold">
                 {activeStories} active stories
               </span>
-              <span className="text-slate-600 font-mono text-[11px] break-all">{address.slice(0, 20)}…</span>
+              <span className="text-[var(--text-muted)] font-mono select-all break-all">{profile.walletAddress}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-10">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
         {[
-          { label: 'Stories',     value: authorStories.length, color:'#10b981', icon:'📚' },
-          { label: 'USDFC Earned',value: `$${totalTips}`,      color:'#38bdf8', icon:'💰' },
-          { label: 'Total Likes', value: totalLikes.toLocaleString(), color:'#f87171', icon:'❤️' },
-          { label: 'Total Views', value: totalViews.toLocaleString(), color:'#8b5cf6', icon:'👁️' },
+          { label: 'Stories',     value: authorStories.length, color:'var(--accent-forest)', icon:'📚' },
+          { label: 'USDFC Earned',value: `$${totalTips.toFixed(0)}`, color:'var(--accent-forest)', icon:'💰' },
+          { label: 'Total Likes', value: totalLikes.toLocaleString(), color:'var(--accent-clay)', icon:'❤️' },
+          { label: 'Total Views', value: totalViews.toLocaleString(), color:'var(--accent-sage)', icon:'👁️' },
         ].map(s => (
-          <div key={s.label} className="rounded-2xl p-4 border border-white/5" style={{background:'linear-gradient(135deg,rgba(8,15,28,0.9),rgba(4,10,20,0.95))'}}>
-            <div className="flex items-center gap-2 mb-1">
+          <div key={s.label} className="rounded-2xl p-4 border border-[var(--border-strong)] bg-[var(--bg-card)] shadow-sm">
+            <div className="flex items-center gap-2 mb-1.5">
               <span>{s.icon}</span>
-              <span className="text-xs text-slate-500">{s.label}</span>
+              <span className="text-xs text-[var(--text-secondary)] font-medium">{s.label}</span>
             </div>
-            <p className="text-xl font-black" style={{color: s.color}}>{s.value}</p>
+            <p className="text-xl font-extrabold" style={{color: s.color}}>{s.value}</p>
           </div>
         ))}
       </div>
 
       {/* Author's stories */}
-      <h2 className="text-lg font-bold text-white mb-4">📚 Published Stories</h2>
+      <h2 className="text-lg font-bold font-serif text-[var(--text-primary)] mb-4">📚 Published Stories</h2>
       {authorStories.length === 0 ? (
-        <div className="rounded-2xl p-8 text-center border border-white/5 mb-10" style={{background:'rgba(8,15,28,0.6)'}}>
-          <p className="text-slate-500">No stories published yet.</p>
+        <div className="rounded-2xl p-8 text-center border border-[var(--border-strong)] bg-[var(--bg-card)] mb-10">
+          <p className="text-[var(--text-secondary)] text-sm mb-4">No stories published yet under this profile.</p>
           <button
             onClick={() => onNavigate('write')}
-            className="mt-4 px-5 py-2 rounded-xl text-sm font-bold text-white transition-all hover:-translate-y-0.5"
-            style={{background:'linear-gradient(135deg,#059669,#0ea5e9)'}}
+            className="px-5 py-2 rounded-xl text-sm font-bold text-white btn-primary transition-all"
           >
             ✍️ Write First Story
           </button>
         </div>
       ) : (
-        <div className="space-y-3 mb-10">
+        <div className="space-y-4 mb-10">
           {authorStories.map(s => {
             const pct = storagePercent(s.hoursRemaining, s.maxHours);
             return (
               <div
                 key={s.id}
-                className="rounded-2xl p-4 border border-white/5 flex flex-col sm:flex-row sm:items-center gap-4 transition-all hover:border-white/10"
-                style={{background:'rgba(8,15,28,0.7)'}}
+                className="rounded-2xl p-4 border border-[var(--border-strong)] bg-[var(--bg-card)] flex flex-col sm:flex-row sm:items-center gap-4 transition-all hover:border-[var(--accent-forest)]/30 shadow-sm"
               >
                 {/* Cover thumbnail */}
                 <div
                   className="w-full sm:w-24 h-16 sm:h-16 rounded-xl overflow-hidden flex-shrink-0 cursor-pointer"
                   style={{
-                    background: s.coverImage?.startsWith('linear') ? s.coverImage : 'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
+                    background: s.coverImage?.startsWith('linear') ? s.coverImage : 'linear-gradient(135deg,#eaddca,#c2b280)',
                   }}
                   onClick={() => onNavigate('story', s.id)}
                 >
@@ -130,35 +208,34 @@ export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClic
 
                 <div className="flex-1 min-w-0">
                   <button
-                    className="text-sm font-bold text-white hover:text-emerald-300 transition-colors text-left"
+                    className="text-sm font-bold text-[var(--text-primary)] hover:text-[var(--accent-forest)] transition-colors text-left font-serif text-base"
                     onClick={() => onNavigate('story', s.id)}
                   >
                     {s.title}
                   </button>
-                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-slate-500 mt-1">
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-[var(--text-secondary)] mt-1.5">
                     <span>{s.wordCount} words</span>
                     <span>{s.likes.toLocaleString()} likes</span>
                     <span>{s.views.toLocaleString()} views</span>
-                    <span className="text-emerald-400">${s.tipsUSDFC} tipped</span>
+                    <span className="text-[var(--accent-forest)] font-semibold">${s.tipsUSDFC} tipped</span>
                   </div>
                   {/* Storage bar */}
-                  <div className="mt-2 h-1 rounded-full overflow-hidden" style={{background:'rgba(255,255,255,0.06)', maxWidth:'200px'}}>
-                    <div className="h-1 rounded-full" style={{width:`${pct}%`, background: pct>50?'#10b981':pct>20?'#f59e0b':'#ef4444'}} />
+                  <div className="mt-2.5 h-1.5 storage-bar-bg" style={{ maxWidth:'200px' }}>
+                    <div className="h-1.5 storage-bar-fill" style={{width:`${pct}%`, background: pct>50?'var(--accent-forest)':pct>20?'var(--accent-ochre)':'var(--accent-clay)'}} />
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                    s.status === 'ACTIVE'   ? 'text-emerald-300 bg-emerald-500/10 border border-emerald-500/20' :
-                    s.status === 'EXPIRING' ? 'text-amber-300 bg-amber-500/10 border border-amber-500/20' :
-                                              'text-red-300 bg-red-500/10 border border-red-500/20'
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    s.status === 'ACTIVE'   ? 'badge-active' :
+                    s.status === 'EXPIRING' ? 'badge-expiring' :
+                                              'badge-expired'
                   }`}>
                     {s.status}
                   </span>
                   <button
                     onClick={() => onTipClick(s)}
-                    className="text-xs font-bold px-3 py-1.5 rounded-lg text-emerald-300 border border-emerald-500/20 hover:bg-emerald-500/15 transition-all"
-                    style={{background:'rgba(16,185,129,0.07)'}}
+                    className="btn-tip text-xs font-bold px-3 py-1.5 rounded-lg"
                   >
                     💸 Tip
                   </button>
@@ -172,24 +249,24 @@ export function AuthorView({ address, stories, tipHistory, onNavigate, onTipClic
       {/* Tip history (given) */}
       {givenTips.length > 0 && (
         <>
-          <h2 className="text-lg font-bold text-white mb-4">💸 Tipping History</h2>
-          <div className="rounded-2xl border border-white/5 overflow-hidden mb-6" style={{background:'rgba(8,15,28,0.7)'}}>
+          <h2 className="text-lg font-bold font-serif text-[var(--text-primary)] mb-4">💸 Tipping History</h2>
+          <div className="rounded-2xl border border-[var(--border-strong)] bg-[var(--bg-card)] overflow-hidden shadow-sm mb-6">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="px-4 py-3 text-left text-xs font-bold text-slate-600 uppercase tracking-wider">Story</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider">Amount</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider hidden sm:table-cell">Tx Hash</th>
-                  <th className="px-4 py-3 text-right text-xs font-bold text-slate-600 uppercase tracking-wider hidden sm:table-cell">Date</th>
+                <tr className="border-b border-[var(--border-strong)] bg-[var(--bg-secondary)]">
+                  <th className="px-4 py-3 text-left text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Story</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider hidden sm:table-cell">Tx Hash</th>
+                  <th className="px-4 py-3 text-right text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider hidden sm:table-cell">Date</th>
                 </tr>
               </thead>
               <tbody>
                 {givenTips.map((tip, i) => (
-                  <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/2 transition-all">
-                    <td className="px-4 py-3 text-slate-300 text-xs">{tip.storyTitle}</td>
-                    <td className="px-4 py-3 text-right text-emerald-400 font-bold text-xs">${tip.amount} USDFC</td>
-                    <td className="px-4 py-3 text-right text-slate-600 font-mono text-[11px] hidden sm:table-cell">{tip.txHash}</td>
-                    <td className="px-4 py-3 text-right text-slate-600 text-xs hidden sm:table-cell">{new Date(tip.timestamp).toLocaleDateString()}</td>
+                  <tr key={i} className="border-b border-[var(--border-strong)] last:border-0 hover:bg-black/5 transition-all">
+                    <td className="px-4 py-3 text-[var(--text-primary)] font-serif text-xs font-bold">{tip.storyTitle}</td>
+                    <td className="px-4 py-3 text-right text-[var(--accent-forest)] font-bold text-xs">${tip.amount} USDFC</td>
+                    <td className="px-4 py-3 text-right text-[var(--text-muted)] font-mono text-[11px] hidden sm:table-cell">{tip.txHash}</td>
+                    <td className="px-4 py-3 text-right text-[var(--text-secondary)] text-xs hidden sm:table-cell">{new Date(tip.timestamp).toLocaleDateString()}</td>
                   </tr>
                 ))}
               </tbody>

@@ -16,14 +16,14 @@ interface WriteViewProps {
 const TAG_SUGGESTIONS = ['sci-fi', 'archive', 'web3', 'philosophy', 'culture', 'poetry', 'history', 'music', 'ocean', 'survival', 'filecoin', 'ipfs'];
 
 const COVER_GRADIENTS = [
-  'linear-gradient(135deg,#0f2027,#203a43,#2c5364)',
-  'linear-gradient(135deg,#1a1a2e,#16213e,#0f3460)',
-  'linear-gradient(135deg,#0d0d0d,#1a1a2e,#16213e)',
-  'linear-gradient(135deg,#0b0c10,#1f2833,#45a29e)',
-  'linear-gradient(135deg,#10002b,#240046,#3c096c)',
-  'linear-gradient(135deg,#0a0a0a,#1c1c1c,#2d6a4f)',
-  'linear-gradient(135deg,#03071e,#370617,#6a040f)',
-  'linear-gradient(135deg,#023e8a,#0077b6,#00b4d8)',
+  'linear-gradient(135deg,#2B5A44,#5E7A68)', /* Forest Sage */
+  'linear-gradient(135deg,#BF5D38,#E59073)', /* Terracotta Peach */
+  'linear-gradient(135deg,#C27A28,#E8BE80)', /* Ochre Sand */
+  'linear-gradient(135deg,#3A506B,#5BC0BE)', /* Ocean Teal */
+  'linear-gradient(135deg,#4A2E35,#8C5F66)', /* Burgundy Rose */
+  'linear-gradient(135deg,#1E2A38,#495867)', /* Slate Charcoal */
+  'linear-gradient(135deg,#4F5D75,#8D99AE)', /* Arctic Blue */
+  'linear-gradient(135deg,#323232,#6B6B6B)', /* Clean Ink */
 ];
 
 function shortenAddr(addr?: string) {
@@ -107,16 +107,18 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10">
+    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-12">
       <div className="mb-8">
-        <h1 className="text-3xl font-black text-white mb-2">✍️ Publish a Story</h1>
-        <p className="text-slate-400 text-sm">Your story will be pinned to IPFS and registered as a Filecoin dataset. Community tips extend its storage lease.</p>
+        <h1 className="text-3xl font-bold font-serif text-[var(--text-primary)] mb-2">✍️ Publish a Story</h1>
+        <p className="text-[var(--text-secondary)] text-sm">Your story will be pinned to IPFS and registered as a Filecoin dataset. Community tips extend its storage lease.</p>
       </div>
 
       {!isConnected && (
-        <div className="rounded-2xl p-6 mb-8 border border-amber-500/20 text-center" style={{background:'rgba(245,158,11,0.07)'}}>
-          <p className="text-amber-300 font-semibold mb-3">Connect your wallet to publish</p>
-          <ConnectButton />
+        <div className="rounded-2xl p-6 mb-8 border border-[var(--accent-ochre)]/20 text-center bg-[var(--accent-ochre)]/5">
+          <p className="text-[var(--accent-ochre)] font-bold mb-3 text-sm">Connect your wallet to publish</p>
+          <div className="inline-block">
+            <ConnectButton />
+          </div>
         </div>
       )}
 
@@ -128,12 +130,11 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
             onClick={() => setStep(s)}
             className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all capitalize ${
               step === s
-                ? 'border-emerald-500/30 text-emerald-300'
-                : 'border-white/7 text-slate-500 hover:text-white hover:border-white/15'
+                ? 'bg-[var(--accent-forest)]/10 border-[var(--accent-forest)]/30 text-[var(--accent-forest)]'
+                : 'border-[var(--border-strong)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--text-secondary)]'
             }`}
-            style={{ background: step === s ? 'rgba(16,185,129,0.1)' : 'rgba(255,255,255,0.03)' }}
           >
-            {s === 'write' ? '📝 Write' : '👁 Preview'}
+            {s === 'write' ? '📝 Write' : '👁️ Preview'}
           </button>
         ))}
       </div>
@@ -142,13 +143,13 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
         <div className="space-y-6">
           {/* Cover image */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Cover Image</label>
+            <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Cover Design</label>
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-2 mb-3">
               {COVER_GRADIENTS.map(g => (
                 <button
                   key={g}
                   onClick={() => { setSelectedGradient(g); setCoverPreview(null); }}
-                  className={`h-12 rounded-xl border-2 transition-all ${selectedGradient === g && !coverPreview ? 'border-emerald-400 scale-105' : 'border-transparent hover:border-white/20'}`}
+                  className={`h-12 rounded-xl border-2 transition-all ${selectedGradient === g && !coverPreview ? 'border-[var(--accent-forest)] scale-105 shadow-sm' : 'border-transparent hover:border-black/20'}`}
                   style={{ background: g }}
                 />
               ))}
@@ -157,67 +158,65 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleCoverUpload} />
               <button
                 onClick={() => fileRef.current?.click()}
-                className="px-4 py-2 text-sm rounded-xl border border-white/10 text-slate-400 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all"
+                className="px-4 py-2 text-sm rounded-xl border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 transition-all bg-[var(--bg-card)]"
               >
                 📷 Upload custom image (max 5MB)
               </button>
               {coverPreview && (
-                <button onClick={() => setCoverPreview(null)} className="text-xs text-red-400 hover:text-red-300">✕ Remove</button>
+                <button onClick={() => setCoverPreview(null)} className="text-xs text-[var(--accent-clay)] hover:underline">✕ Remove</button>
               )}
             </div>
             {/* Preview */}
             <div
-              className="h-32 rounded-xl mt-3 overflow-hidden relative"
+              className="h-36 rounded-xl mt-4 overflow-hidden relative shadow-inner"
               style={{ background: coverPreview ? undefined : selectedGradient }}
             >
               {coverPreview && <img src={coverPreview} alt="" className="w-full h-full object-cover" />}
               <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-              <span className="absolute bottom-2 left-3 text-xs text-white/60">Cover preview</span>
+              <span className="absolute bottom-2 left-3 text-xs text-white/80 font-medium">Cover preview</span>
             </div>
           </div>
 
           {/* Title */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Story Title *</label>
+            <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Story Title *</label>
             <input
               type="text"
               placeholder="Give your story a compelling title…"
               value={title}
               onChange={e => setTitle(e.target.value)}
               maxLength={120}
-              className="w-full px-4 py-3 rounded-xl text-sm text-slate-200 placeholder-slate-600 border border-white/7 focus:outline-none focus:border-emerald-500/40 transition-all"
-              style={{ background: 'rgba(2,8,16,0.8)' }}
+              className="w-full px-4 py-3 rounded-xl text-sm border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-card)] font-serif text-lg"
             />
-            <p className="text-xs text-slate-700 mt-1 text-right">{title.length}/120</p>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1 text-right font-medium">{title.length}/120</p>
           </div>
 
           {/* Content */}
           <div>
             <div className="flex justify-between mb-2">
-              <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Story Content *</label>
-              <span className="text-xs text-slate-600">{wordCount} words · ~{readMinutes} min read</span>
+              <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Story Content *</label>
+              <span className="text-xs text-[var(--text-muted)] font-medium">{wordCount} words · ~{readMinutes} min read</span>
             </div>
             <textarea
               placeholder="Write your story here. There's no page limit — the longer the story, the more Filecoin data is stored, adding real value to the network…"
               rows={16}
               value={content}
               onChange={e => setContent(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl text-sm text-slate-200 placeholder-slate-600 border border-white/7 focus:outline-none focus:border-emerald-500/40 transition-all resize-none leading-relaxed"
-              style={{ background: 'rgba(2,8,16,0.8)' }}
+              className="w-full px-4 py-3 rounded-xl text-sm border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-card)] resize-none serif-body"
             />
-            <div className="rounded-xl px-4 py-2 mt-2 border border-white/5 text-xs text-slate-500" style={{background:'rgba(2,8,16,0.5)'}}>
-              💡 Longer stories = more Filecoin data stored = more value to the network + more community attachment to preserve them
+            <div className="rounded-xl px-4 py-2 mt-2 border border-[var(--border-subtle)] text-xs text-[var(--text-secondary)] bg-[var(--bg-secondary)] leading-relaxed">
+              💡 <strong>Value Highlight:</strong> Longer stories store more metadata and text payload. Since this acts as a real Filecoin dataset, your literary work contributes to the total storage volume of the network.
             </div>
           </div>
 
           {/* Tags */}
           <div>
-            <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Tags (max 5)</label>
-            <div className="flex flex-wrap gap-2 mb-2">
+            <label className="block text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-2">Tags (max 5)</label>
+            <div className="flex flex-wrap gap-2 mb-2.5">
               {tags.map(tag => (
-                <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-emerald-300 border border-emerald-500/25" style={{background:'rgba(16,185,129,0.1)'}}>
+                <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold text-[var(--accent-forest)] border border-[var(--accent-forest)]/20 bg-[var(--accent-forest)]/5">
                   #{tag}
-                  <button onClick={() => removeTag(tag)} className="text-emerald-600 hover:text-red-400 ml-0.5">✕</button>
+                  <button onClick={() => removeTag(tag)} className="text-[var(--accent-forest)] hover:text-[var(--accent-clay)] ml-0.5 font-bold">✕</button>
                 </span>
               ))}
             </div>
@@ -228,15 +227,14 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
                 value={tagInput}
                 onChange={e => setTagInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(tagInput); } }}
-                className="flex-1 px-3 py-2 rounded-xl text-sm text-slate-200 placeholder-slate-600 border border-white/7 focus:outline-none focus:border-emerald-500/40 transition-all"
-                style={{ background: 'rgba(2,8,16,0.8)' }}
+                className="flex-1 px-3 py-2 rounded-xl text-sm border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] transition-all bg-[var(--bg-card)]"
                 disabled={tags.length >= 5}
               />
-              <button onClick={() => addTag(tagInput)} className="px-4 py-2 rounded-xl text-sm border border-white/10 text-slate-400 hover:text-white hover:bg-white/5 transition-all">Add</button>
+              <button onClick={() => addTag(tagInput)} className="px-4 py-2 rounded-xl text-sm border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 bg-[var(--bg-card)] transition-all font-semibold">Add</button>
             </div>
-            <div className="flex flex-wrap gap-1.5 mt-2">
+            <div className="flex flex-wrap gap-1.5 mt-2.5">
               {TAG_SUGGESTIONS.filter(t => !tags.includes(t)).map(t => (
-                <button key={t} onClick={() => addTag(t)} className="px-2 py-0.5 rounded-full text-[11px] text-slate-600 border border-white/5 hover:text-slate-300 hover:border-white/10 transition-all" style={{background:'rgba(255,255,255,0.02)'}}>
+                <button key={t} onClick={() => addTag(t)} className="px-2.5 py-0.5 rounded-full text-[11px] text-[var(--text-secondary)] border border-[var(--border-strong)] hover:border-[var(--text-secondary)] bg-[var(--bg-card)] transition-all">
                   +{t}
                 </button>
               ))}
@@ -247,15 +245,15 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
           <div className="flex gap-3 pt-2">
             <button
               onClick={() => setStep('preview')}
-              className="flex-1 py-3 rounded-xl font-bold text-sm border border-white/10 text-slate-300 hover:text-white hover:border-white/20 hover:bg-white/5 transition-all"
+              className="flex-1 py-3 rounded-xl font-semibold text-sm border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 bg-[var(--bg-card)] transition-all"
             >
               👁 Preview
             </button>
             <button
               onClick={handlePublish}
               disabled={!isConnected || isUploading || !title.trim() || wordCount < 30}
-              className="flex-2 px-8 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-lg hover:shadow-emerald-500/20 hover:-translate-y-0.5"
-              style={{ background: 'linear-gradient(135deg,#059669,#0ea5e9)', flex: 2 }}
+              className="flex-2 px-8 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed btn-primary"
+              style={{ flex: 2 }}
             >
               {isUploading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -273,33 +271,33 @@ export function WriteView({ onPublish, onNavigate, showToast }: WriteViewProps) 
         /* Preview */
         <div>
           <div
-            className="h-48 rounded-2xl overflow-hidden mb-6 relative"
+            className="h-48 rounded-2xl overflow-hidden mb-6 relative shadow-md"
             style={{ background: coverPreview ? undefined : selectedGradient }}
           >
             {coverPreview && <img src={coverPreview} alt="" className="w-full h-full object-cover" />}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4">
               <div className="flex gap-2 flex-wrap mb-2">
                 {tags.map(t => (
-                  <span key={t} className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-white/15 text-white/80 backdrop-blur-sm">#{t}</span>
+                  <span key={t} className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-full bg-white/25 text-white backdrop-blur-sm">#{t}</span>
                 ))}
               </div>
-              <h1 className="text-2xl font-black text-white drop-shadow">{title || 'Untitled Story'}</h1>
-              <p className="text-xs text-white/60 mt-1">by {shortenAddr(address)} · {wordCount} words · {readMinutes} min read</p>
+              <h1 className="text-2xl font-bold font-serif text-white drop-shadow">{title || 'Untitled Story'}</h1>
+              <p className="text-xs text-white/80 mt-1">by {shortenAddr(address)} · {wordCount} words · {readMinutes} min read</p>
             </div>
           </div>
-          <div className="prose prose-sm max-w-none rounded-2xl p-6 border border-white/5" style={{background:'rgba(8,15,28,0.85)'}}>
-            <p className="text-slate-300 leading-relaxed whitespace-pre-line text-sm">{content || 'Nothing written yet…'}</p>
+          <div className="glass rounded-2xl p-6 border border-[var(--border-subtle)] bg-[var(--bg-card)]">
+            <p className="serif-body text-[var(--text-primary)] whitespace-pre-line text-sm">{content || 'Nothing written yet…'}</p>
           </div>
           <div className="flex gap-3 mt-6">
-            <button onClick={() => setStep('write')} className="flex-1 py-3 rounded-xl font-bold text-sm border border-white/10 text-slate-300 hover:text-white hover:bg-white/5 transition-all">
+            <button onClick={() => setStep('write')} className="flex-1 py-3 rounded-xl font-semibold text-sm border border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/5 bg-[var(--bg-card)] transition-all">
               ← Back to Edit
             </button>
             <button
               onClick={handlePublish}
               disabled={!isConnected || isUploading || !title.trim() || wordCount < 30}
-              className="flex-2 px-8 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed hover:-translate-y-0.5"
-              style={{ background: 'linear-gradient(135deg,#059669,#0ea5e9)', flex: 2 }}
+              className="flex-2 px-8 py-3 rounded-xl font-bold text-white text-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed btn-primary"
+              style={{ flex: 2 }}
             >
               {isUploading ? 'Uploading…' : '🚀 Publish to Filecoin'}
             </button>
