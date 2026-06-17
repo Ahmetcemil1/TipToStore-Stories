@@ -3,23 +3,76 @@ import { WarmStorageService } from '@filoz/synapse-sdk/warm-storage';
 import { privateKeyToAccount } from 'viem/accounts';
 
 /**
- * Filecoin / Synapse SDK Integration Service
- * This service implements the actual Filecoin logic required for TipToStore Stories.
- * Note: Requires a funded private key to execute transactions. 
+ * Filecoin / Synapse SDK Extended Interfaces for Type Safety
+ * This avoids inline 'as any' casting and provides clean IDE autocomplete.
  */
+interface ExtendedSynapse {
+  payments: {
+    approve(args: { spender: `0x${string}`; amount: number }): Promise<{ hash: `0x${string}` }>;
+    accountSummary(): Promise<{ 
+      funds: bigint; 
+      availableFunds: bigint; 
+      debt: bigint; 
+      lockupRatePerEpoch: bigint; 
+      lockupRatePerMonth: bigint; 
+      totalLockup: bigint; 
+      totalFixedLockup: bigint;
+    }>;
+    createRail(args: { to: `0x${string}`; rate: number }): Promise<string>;
+    topUpRail(args: { railId: string; amount: number }): Promise<void>;
+    settleAuto(args: { railId: string }): Promise<`0x${string}`>;
+  };
+  storage: {
+    prepare(args: { dataSize: bigint }): Promise<{ 
+      costs: { 
+        depositNeeded: bigint; 
+        rates: { perMonth: bigint } 
+      }; 
+      transaction?: {
+        depositAmount: bigint;
+        includesApproval: boolean;
+        execute(args: { onHash: (hash: string) => void }): Promise<void>;
+      } 
+    }>;
+    createContext(args: { metadata: Record<string, string> }): Promise<{ 
+      upload(data: Uint8Array): Promise<{ 
+        copies: { dataSetId: bigint }[] 
+      }> 
+    }>;
+    getStorageCost(dataSetId: string): Promise<{ costPerDay: number }>;
+  };
+  contracts?: {
+    filecoinPay?: { address: string };
+  };
+  client: {
+    waitForTransactionReceipt(args: { hash: `0x${string}` }): Promise<void>;
+    getBlockNumber(): Promise<bigint>;
+  };
+}
+
+interface ExtendedWarmStorage {
+  getDataSet(args: { dataSetId: bigint }): Promise<{ pdpEndEpoch: bigint } | null>;
+  upsertDataSet(dataSetId: string, args: { endEpoch: number }): Promise<void>;
+}
+
+// ─────────────────────────────────────────────────────────
 
 const account = privateKeyToAccount(
   (process.env.NEXT_PUBLIC_AUTHOR_PRIVATE_KEY || '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80') as `0x${string}`
 );
 
-export const synapse = Synapse.create({ 
+// Instantiate core Synapse Client
+const rawSynapse = Synapse.create({ 
   account, 
   source: "tipto-store" 
 });
 
-// Instantiate WarmStorageService using synapse client
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const warmStorage = new WarmStorageService({ client: synapse.client as any });
+// Cast to our extended interface for complete type safety
+export const synapse = rawSynapse as unknown as ExtendedSynapse;
+
+// Instantiate WarmStorageService
+const rawWarmStorage = new WarmStorageService({ client: rawSynapse.client as any });
+export const warmStorage = rawWarmStorage as unknown as ExtendedWarmStorage;
 
 /**
  * Uploads a story to Filecoin Onchain Cloud and creates a Data Set.
@@ -33,7 +86,7 @@ export async function uploadStoryToFilecoin(data: Uint8Array, title: string, aut
     });
     console.log("Storage deposit needed:", prep.costs?.depositNeeded);
   } catch (e) {
-    console.warn("Prepare check failed, proceeding with context creation:", e);
+    throw new Error("Failed to prepare Filecoin storage transaction: " + (e as Error).message);
   }
 
   // 2. Create the storage context
@@ -46,7 +99,12 @@ export async function uploadStoryToFilecoin(data: Uint8Array, title: string, aut
   });
 
   // 3. Upload the file to Filecoin network
-  const result = await ctx.upload(data);
+  let result;
+  try {
+    result = await ctx.upload(data);
+  } catch (e) {
+    throw new Error("Filecoin storage upload failed: " + (e as Error).message);
+  }
   
   const firstCopy = result.copies[0];
   if (!firstCopy) {
@@ -60,7 +118,7 @@ export async function uploadStoryToFilecoin(data: Uint8Array, title: string, aut
   }
 
   return {
-    dataSetId: firstCopy.dataSetId,
+    dataSetId: firstCopy.dataSetId.toString(),
     endEpoch: dataSetInfo.pdpEndEpoch
   };
 }
@@ -70,10 +128,11 @@ export async function uploadStoryToFilecoin(data: Uint8Array, title: string, aut
  * using the Synapse Payment Rails.
  */
 export async function tipAndRenewStorage(dataSetId: string, authorAddress: string, tipAmountUSDFC: number) {
-  // 1. Approve USDFC spending via synapse.payments as expected by the evaluator
+  // 1. Approve USDFC spending via synapse.payments targeting the correct filecoinPay contract
+  const filecoinPayAddress = (synapse.contracts?.filecoinPay?.address || '0x0000000000000000000000000000000000000000') as `0x${string}`;
   try {
-    await (synapse.payments as any).approve({
-      spender: authorAddress as `0x${string}`,
+    await synapse.payments.approve({
+      spender: filecoinPayAddress,
       amount: tipAmountUSDFC,
     });
     
@@ -81,49 +140,62 @@ export async function tipAndRenewStorage(dataSetId: string, authorAddress: strin
     const summary = await synapse.payments.accountSummary();
     console.log("Available funds for storage runway:", summary.availableFunds);
   } catch (e) {
-    // Fallback if payments api behaves differently
+    throw new Error("USDFC payment approval failed: " + (e as Error).message);
   }
 
   // 2. Create a payment rail for tipping (if not already existing)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const railId = await (synapse.payments as any).createRail({
-    to: authorAddress as `0x${string}`,
-    rate: 0.1, // Cost per epoch (example)
-  });
+  let railId: string;
+  try {
+    railId = await synapse.payments.createRail({
+      to: authorAddress as `0x${string}`,
+      rate: 0.1, // Cost per epoch (example)
+    });
+  } catch (e) {
+    throw new Error("Failed to create USDFC payment rail: " + (e as Error).message);
+  }
 
   // 3. Reader tips via the rail
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (synapse.payments as any).topUpRail({ 
-    railId, 
-    amount: tipAmountUSDFC 
-  });
+  try {
+    await synapse.payments.topUpRail({ 
+      railId, 
+      amount: tipAmountUSDFC 
+    });
+  } catch (e) {
+    throw new Error("Failed to fund payment rail: " + (e as Error).message);
+  }
   
-  // 3. Settle the rail (transfer tips to author)
-  const hash = await synapse.payments.settleAuto({ railId });
-  await synapse.client.waitForTransactionReceipt({ hash });
+  // 4. Settle the rail (transfer tips to author)
+  try {
+    const hash = await synapse.payments.settleAuto({ railId });
+    await synapse.client.waitForTransactionReceipt({ hash });
+  } catch (e) {
+    throw new Error("Failed to settle USDFC transaction: " + (e as Error).message);
+  }
   
-  // 4. Calculate storage cost from tips
+  // 5. Calculate storage cost from tips
   let costPerDay = 0.1;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const storageCost = await (synapse.storage as any).getStorageCost(dataSetId);
+    const storageCost = await synapse.storage.getStorageCost(dataSetId);
     costPerDay = storageCost.costPerDay || 0.1;
   } catch {
     // Fallback if SDK method doesn't exist in this version
   }
   const renewalDays = tipAmountUSDFC / costPerDay;
   
-  // 5. Extend storage duration on Filecoin
+  // 6. Extend storage duration on Filecoin
   const currentDataSet = await warmStorage.getDataSet({ dataSetId: BigInt(dataSetId) });
   if (!currentDataSet) {
     throw new Error("Dataset not found on-chain");
   }
-  const newEndEpoch = Number(currentDataSet.pdpEndEpoch) + (renewalDays * 2880); // 2880 epochs per day (30s each)
+  const newEndEpoch = Number(currentDataSet.pdpEndEpoch) + Math.floor(renewalDays * 2880); // 2880 epochs per day (30s each)
   
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (warmStorage as any).upsertDataSet(dataSetId, {
-    endEpoch: newEndEpoch,
-  });
+  try {
+    await warmStorage.upsertDataSet(dataSetId, {
+      endEpoch: newEndEpoch,
+    });
+  } catch (e) {
+    throw new Error("Failed to renew Filecoin storage lease: " + (e as Error).message);
+  }
   
   return { success: true, daysExtended: renewalDays };
 }
