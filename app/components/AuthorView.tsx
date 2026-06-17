@@ -46,8 +46,7 @@ export function AuthorView({
   const [isOwnProfile, setIsOwnProfile] = useState(false);
   const [selectedStoryId, setSelectedStoryId] = useState('');
   const [selectedPkg, setSelectedPkg] = useState({ days: 30, cost: 0.05 });
-  const [demoAdminMode, setDemoAdminMode] = useState(false);
-  const ADMIN_WALLET = '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
+  const ADMIN_WALLET = process.env.NEXT_PUBLIC_PLATFORM_OWNER_ADDRESS || '0x70997970C51812dc3A010C7d01b50e0d17dc79C8';
 
   // Wagmi Hooks for real wallet data
   const { isConnected, address: connectedAddress } = useAccount();
@@ -254,23 +253,13 @@ export function AuthorView({
       {/* Manage Earnings & Storage Panel */}
       {isOwnProfile && (
         <div className="rounded-2xl p-6 mb-8 border border-[var(--border-subtle)] bg-[var(--bg-card)] shadow-sm">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-5 pb-3 border-b border-[var(--border-strong)]">
+          <div className="flex justify-between items-center mb-5 pb-3 border-b border-[var(--border-strong)]">
             <h3 className="text-base font-bold font-serif text-[var(--text-primary)] flex items-center gap-2">
               <svg className="w-5 h-5 text-[var(--accent-forest)]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M12 16v1M10 12h4" />
               </svg>
               Manage Earnings & Filecoin Storage Leases
             </h3>
-            <button
-              onClick={() => setDemoAdminMode(!demoAdminMode)}
-              className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all cursor-pointer ${
-                demoAdminMode
-                  ? 'bg-[var(--accent-ochre)]/10 border-[var(--accent-ochre)]/30 text-[var(--accent-ochre)]'
-                  : 'border-[var(--border-strong)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] bg-[var(--bg-secondary)]'
-              }`}
-            >
-              ⚙️ {demoAdminMode ? 'Exit Admin View' : 'Simulate Platform Owner'}
-            </button>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
@@ -373,8 +362,8 @@ export function AuthorView({
             </div>
           </div>
 
-          {/* Admin Dashboard (Visible only to Admin or when Demo Admin Mode is active) */}
-          {(connectedAddress?.toLowerCase() === ADMIN_WALLET.toLowerCase() || demoAdminMode) && (
+          {/* Admin Dashboard (Visible only to the real Platform Admin connected wallet) */}
+          {connectedAddress?.toLowerCase() === ADMIN_WALLET.toLowerCase() && (
             <div className="mt-6 pt-6 border-t border-[var(--border-strong)]">
               <h4 className="text-xs font-bold text-[var(--accent-ochre)] uppercase tracking-wider mb-3 flex items-center gap-1.5">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">

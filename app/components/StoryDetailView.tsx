@@ -24,6 +24,54 @@ function barColor(pct: number) {
   return 'var(--accent-clay)';
 }
 
+function renderMarkdownContent(text: string) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return lines.map((line, index) => {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      return <div key={index} className="h-4" />;
+    }
+    // Check for Headings
+    if (trimmed.startsWith('## ')) {
+      return (
+        <h3 key={index} className="text-lg sm:text-xl font-bold font-serif text-[var(--text-primary)] mt-6 mb-3">
+          {trimmed.slice(3)}
+        </h3>
+      );
+    }
+    if (trimmed.startsWith('# ')) {
+      return (
+        <h2 key={index} className="text-xl sm:text-2xl font-bold font-serif text-[var(--text-primary)] mt-8 mb-4">
+          {trimmed.slice(2)}
+        </h2>
+      );
+    }
+    // Check for Markdown Image: ![alt](url)
+    const imgMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/);
+    if (imgMatch) {
+      const [, alt, url] = imgMatch;
+      return (
+        <div key={index} className="my-6 rounded-xl overflow-hidden border border-[var(--border-strong)] bg-[var(--bg-secondary)] shadow-sm max-w-2xl mx-auto">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={url} alt={alt} className="w-full h-auto object-cover max-h-[450px]" />
+          {alt && (
+            <div className="px-4 py-2 border-t border-[var(--border-strong)] bg-[var(--bg-card)] text-center text-xs text-[var(--text-muted)] font-serif italic">
+              {alt}
+            </div>
+          )}
+        </div>
+      );
+    }
+    // Default Paragraph
+    return (
+      <p key={index} className="leading-relaxed mb-4 font-serif text-[15px] sm:text-[17px] text-[var(--text-primary)]">
+        {line}
+      </p>
+    );
+  });
+}
+
 export function StoryDetailView({ story, onBack, onTipClick, onLike, onNavigate }: StoryDetailViewProps) {
   const [currentChapter, setCurrentChapter] = useState(0);
 
@@ -276,8 +324,8 @@ export function StoryDetailView({ story, onBack, onTipClick, onLike, onNavigate 
           {hasChapters && (
             <h2 className="text-xl font-bold font-serif text-[var(--text-primary)] mb-5">{story.chapters![currentChapter].title}</h2>
           )}
-          <div className="serif-body text-[var(--text-primary)] whitespace-pre-line text-[15px] sm:text-[17px]">
-            {displayContent}
+          <div className="serif-body text-[var(--text-primary)] text-[15px] sm:text-[17px]">
+            {renderMarkdownContent(displayContent)}
           </div>
         </div>
       )}

@@ -33,6 +33,15 @@ const COVER_GRADIENTS = [
   'linear-gradient(135deg,#323232,#6B6B6B)', /* Clean Ink */
 ];
 
+const PRESET_IMAGES = [
+  { label: '🌲 Nature', url: 'https://images.unsplash.com/photo-1448375240586-882707db888b?auto=format&fit=crop&w=1200&q=80', alt: 'Deep Forest Path' },
+  { label: '🚀 Space', url: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=1200&q=80', alt: 'Nebula Star Field' },
+  { label: '🏛️ Library', url: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=1200&q=80', alt: 'Classical Library' },
+  { label: '✍️ Writing', url: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80', alt: 'Vintage Ink Pen' },
+  { label: '🌊 Ocean', url: 'https://images.unsplash.com/photo-1505118380757-91f5f5632de0?auto=format&fit=crop&w=1200&q=80', alt: 'Deep Sea Reef' },
+  { label: '🏙️ City', url: 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?auto=format&fit=crop&w=1200&q=80', alt: 'Retro City Skyline' }
+];
+
 function shortenAddr(addr?: string) {
   if (!addr) return '0xYou';
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
@@ -58,6 +67,81 @@ export function WriteView({ onPublish, onNavigate, showToast, session, stories }
   const [chapTitle, setChapTitle] = useState('');
   const [chapContent, setChapContent] = useState('');
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  // In-Story Image Inserter States
+  const [showImgPicker, setShowImgPicker] = useState<'single' | 'chapter' | null>(null);
+  const [customImgUrl, setCustomImgUrl] = useState('');
+  const [customImgAlt, setCustomImgAlt] = useState('');
+
+  function insertMarkdownImage(type: 'single' | 'chapter', url: string, alt: string) {
+    const markdown = `\n![${alt.trim() || 'Illustration'}](${url.trim()})\n`;
+    if (type === 'single') {
+      setSingleContent(prev => prev + markdown);
+    } else {
+      setChapContent(prev => prev + markdown);
+    }
+    showToast('Illustration markdown inserted!', 'success');
+    setShowImgPicker(null);
+    setCustomImgUrl('');
+    setCustomImgAlt('');
+  }
+
+  function renderImagePicker(type: 'single' | 'chapter') {
+    return (
+      <div className="mt-3 p-4 border border-[var(--accent-forest)]/20 bg-[var(--bg-secondary)] rounded-xl space-y-3 animate-fade-in-up text-left">
+        <div className="flex justify-between items-center">
+          <p className="text-[11px] font-bold text-[var(--accent-forest)] uppercase tracking-wider">Insert Story Illustration</p>
+          <button type="button" onClick={() => setShowImgPicker(null)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-xs font-bold cursor-pointer">✕ Close</button>
+        </div>
+        
+        {/* Presets */}
+        <div>
+          <label className="block text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider mb-1.5">Preset Illustrations</label>
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {PRESET_IMAGES.map(img => (
+              <button
+                key={img.label}
+                type="button"
+                onClick={() => insertMarkdownImage(type, img.url, img.alt)}
+                className="py-1.5 px-2 rounded-lg text-xs font-bold border border-[var(--border-strong)] bg-[var(--bg-card)] hover:border-[var(--accent-forest)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-all cursor-pointer truncate"
+              >
+                {img.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Custom URL */}
+        <div className="pt-2 border-t border-[var(--border-strong)] space-y-2">
+          <label className="block text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">Or Custom Image URL</label>
+          <div className="grid sm:grid-cols-3 gap-2">
+            <input
+              type="text"
+              placeholder="https://example.com/image.jpg"
+              value={customImgUrl}
+              onChange={e => setCustomImgUrl(e.target.value)}
+              className="sm:col-span-2 px-3 py-1.5 text-xs rounded-lg border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] bg-[var(--bg-card)] font-serif"
+            />
+            <input
+              type="text"
+              placeholder="Caption/Alt text"
+              value={customImgAlt}
+              onChange={e => setCustomImgAlt(e.target.value)}
+              className="px-3 py-1.5 text-xs rounded-lg border border-[var(--border-strong)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-[var(--accent-forest)] bg-[var(--bg-card)] font-serif"
+            />
+          </div>
+          <button
+            type="button"
+            disabled={!customImgUrl.trim()}
+            onClick={() => insertMarkdownImage(type, customImgUrl, customImgAlt)}
+            className="w-full py-2 rounded-lg text-xs font-bold text-white btn-primary disabled:opacity-45 disabled:cursor-not-allowed transition-all cursor-pointer"
+          >
+            Insert Custom Image Link
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Single Page Mode State
   const [singleContent, setSingleContent] = useState('');
@@ -398,9 +482,19 @@ export function WriteView({ onPublish, onNavigate, showToast, session, stories }
 
               {/* Add/Edit chapter form */}
               <div className="border border-[var(--border-subtle)] rounded-xl p-4 bg-[var(--bg-card)] space-y-3 shadow-sm">
-                <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-                  {editingIndex !== null ? `Edit Chapter ${editingIndex + 1}` : `Add Chapter / Page ${chapters.length + 1}`}
-                </p>
+                <div className="flex justify-between items-center mb-1">
+                  <p className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
+                    {editingIndex !== null ? `Edit Chapter ${editingIndex + 1}` : `Add Chapter / Page ${chapters.length + 1}`}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowImgPicker(showImgPicker === 'chapter' ? null : 'chapter')}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border-strong)] text-[10px] font-bold text-[var(--accent-forest)] hover:bg-[var(--accent-forest)]/5 transition-all cursor-pointer bg-[var(--bg-secondary)]"
+                  >
+                    🖼️ {showImgPicker === 'chapter' ? 'Hide Inserter' : 'Add Illustration'}
+                  </button>
+                </div>
+                {showImgPicker === 'chapter' && renderImagePicker('chapter')}
                 <input
                   type="text"
                   placeholder="Chapter Title (e.g., Chapter 1: The Beginning)"
@@ -438,10 +532,20 @@ export function WriteView({ onPublish, onNavigate, showToast, session, stories }
           ) : (
             /* Single chapter flow */
             <div>
-              <div className="flex justify-between mb-2">
+              <div className="flex justify-between items-center mb-2">
                 <label className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Story Content *</label>
-                <span className="text-xs text-[var(--text-muted)] font-medium">{totalWordCount} words · ~{readMinutes} min read</span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowImgPicker(showImgPicker === 'single' ? null : 'single')}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border-strong)] text-[10px] font-bold text-[var(--accent-forest)] hover:bg-[var(--accent-forest)]/5 transition-all cursor-pointer bg-[var(--bg-secondary)]"
+                  >
+                    🖼️ {showImgPicker === 'single' ? 'Hide Inserter' : 'Add Illustration'}
+                  </button>
+                  <span className="text-xs text-[var(--text-muted)] font-medium">{totalWordCount} words · ~{readMinutes} min read</span>
+                </div>
               </div>
+              {showImgPicker === 'single' && renderImagePicker('single')}
               <textarea
                 placeholder="Write your story here. There's no page limit — the longer the story, the more Filecoin data is stored, adding real value to the network…"
                 rows={16}
